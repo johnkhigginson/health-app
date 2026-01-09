@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Navigate } from 'react-router-dom';
-import { ArrowUp, Check } from 'lucide-react';
+import { ArrowUp, Check, Edit2 } from 'lucide-react';
 import { Meal } from '../types';
 import { createMealChatSession } from '../services/geminiService';
 import MicrophoneButton from '../components/MicrophoneButton';
+import { EditMealModal } from '../components/EditMealModal';
 
 interface MealLoggerProps {
   onLogMeal: (meal: Meal) => void;
@@ -15,14 +16,10 @@ export const MealLogger: React.FC<MealLoggerProps> = ({ onLogMeal }) => {
   ]);
   const [input, setInput] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
-  const [draftMeal, setDraftMeal] = useState<{
-    name: string;
-    calories: number;
-    protein: number;
-    carbs: number;
-    fat: number;
-    short_tip: string;
-  } | null>(null);
+  
+  // Staging state
+  const [draftMeal, setDraftMeal] = useState<Meal | null>(null);
+  const [isReviewOpen, setIsReviewOpen] = useState(false);
   
   const chatRef = useRef<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -60,7 +57,19 @@ export const MealLogger: React.FC<MealLoggerProps> = ({ onLogMeal }) => {
         }
 
         if (parsed.mealData) {
-          setDraftMeal(parsed.mealData);
+           // Create a full meal object from the AI partial data
+           const aiMeal: Meal = {
+             id: Date.now().toString(),
+             timestamp: new Date().toISOString(),
+             name: parsed.mealData.name,
+             description: "Logged via chat",
+             calories: parsed.mealData.calories,
+             protein: parsed.mealData.protein,
+             carbs: parsed.mealData.carbs,
+             fat: parsed.mealData.fat,
+             aiAnalysis: parsed.mealData.short_tip
+           };
+          setDraftMeal(aiMeal);
         }
 
       } catch (jsonError) {
@@ -76,22 +85,16 @@ export const MealLogger: React.FC<MealLoggerProps> = ({ onLogMeal }) => {
     }
   };
 
-  const handleSaveMeal = () => {
+  const handleQuickSave = () => {
     if (draftMeal) {
-       const newMeal: Meal = {
-        id: Date.now().toString(),
-        timestamp: new Date().toISOString(),
-        name: draftMeal.name,
-        description: "Logged via chat",
-        calories: draftMeal.calories,
-        protein: draftMeal.protein,
-        carbs: draftMeal.carbs,
-        fat: draftMeal.fat,
-        aiAnalysis: draftMeal.short_tip,
-      };
-      onLogMeal(newMeal);
+      onLogMeal(draftMeal);
       setRedirect(true);
     }
+  };
+
+  const handleReviewSave = (updatedMeal: Meal) => {
+    onLogMeal(updatedMeal);
+    setRedirect(true);
   };
 
   if (redirect) return <Navigate to="/" />;
@@ -137,22 +140,36 @@ export const MealLogger: React.FC<MealLoggerProps> = ({ onLogMeal }) => {
         {/* Draft Meal Card (Floating) */}
         {draftMeal && (
           <div className="mb-4 animate-fade-in-up">
-            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-emerald-100 dark:border-emerald-900 p-4 flex justify-between items-center ring-1 ring-emerald-500/10">
-              <div>
-                <h3 className="font-bold text-slate-800 dark:text-white text-sm">{draftMeal.name}</h3>
-                <div className="text-xs text-slate-500 dark:text-slate-400 mt-1 flex gap-2">
-                  <span className="font-medium text-emerald-600 dark:text-emerald-400">{draftMeal.calories} kcal</span>
-                  <span>{draftMeal.protein}g P</span>
-                  <span>{draftMeal.carbs}g C</span>
-                  <span>{draftMeal.fat}g F</span>
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-emerald-100 dark:border-emerald-900 p-4 flex flex-col gap-3 ring-1 ring-emerald-500/10">
+              <div className="flex justify-between items-start">
+                <div>
+                  <h3 className="font-bold text-slate-800 dark:text-white text-base">{draftMeal.name}</h3>
+                  <div className="text-xs text-slate-500 dark:text-slate-400 mt-1 flex gap-2">
+                    <span className="font-medium text-emerald-600 dark:text-emerald-400">{draftMeal.calories} kcal</span>
+                    <span>{draftMeal.protein}g P</span>
+                    <span>{draftMeal.carbs}g C</span>
+                    <span>{draftMeal.fat}g F</span>
+                  </div>
+                </div>
+                <div className="bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-[10px] px-2 py-1 rounded-full font-bold uppercase tracking-wide">
+                   AI Estimate
                 </div>
               </div>
-              <button 
-                onClick={handleSaveMeal}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-1 shadow-md shadow-emerald-600/20"
-              >
-                Save <Check className="w-4 h-4" />
-              </button>
+              
+              <div className="flex gap-2">
+                <button 
+                  onClick={() => setIsReviewOpen(true)}
+                  className="flex-1 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 py-2 rounded-lg text-sm font-medium transition hover:bg-slate-200 dark:hover:bg-slate-600 flex items-center justify-center gap-1"
+                >
+                  <Edit2 className="w-3 h-3" /> Edit
+                </button>
+                <button 
+                  onClick={handleQuickSave}
+                  className="flex-[2] bg-emerald-600 hover:bg-emerald-700 text-white py-2 rounded-lg text-sm font-medium transition flex items-center justify-center gap-1 shadow-md shadow-emerald-600/20"
+                >
+                  <Check className="w-4 h-4" /> Save
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -186,6 +203,13 @@ export const MealLogger: React.FC<MealLoggerProps> = ({ onLogMeal }) => {
           </button>
         </div>
       </div>
+
+      <EditMealModal 
+        isOpen={isReviewOpen} 
+        onClose={() => setIsReviewOpen(false)}
+        initialMeal={draftMeal}
+        onSave={handleReviewSave}
+      />
     </div>
   );
 };

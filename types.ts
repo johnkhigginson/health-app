@@ -9,6 +9,7 @@ export interface UserProfile {
   dietaryPreferences: string;
   isOnboarded: boolean;
   theme: 'light' | 'dark';
+  voice: string;
   reminders: {
     enabled: boolean;
     time: string; // HH:MM format
@@ -67,6 +68,7 @@ export const DEFAULT_PROFILE: UserProfile = {
   dietaryPreferences: '',
   isOnboarded: false,
   theme: 'light',
+  voice: 'Kore',
   reminders: {
     enabled: false,
     time: '08:00'

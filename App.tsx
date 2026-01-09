@@ -7,6 +7,7 @@ import { MealLogger } from './views/MealLogger';
 import { WeightTracker } from './views/WeightTracker';
 import { WellbeingView } from './views/WellbeingView';
 import { SettingsView } from './views/SettingsView';
+import { CoachChat } from './views/CoachChat';
 import { NavBar } from './components/NavBar';
 import { ActionMenu } from './components/ActionMenu';
 
@@ -16,7 +17,8 @@ const App: React.FC = () => {
     updateProfile, 
     logMeal, 
     logWeight, 
-    logMood, 
+    logMood,
+    importData,
     resetApp 
   } = useAppState();
 
@@ -67,12 +69,14 @@ const App: React.FC = () => {
           <Routes>
             <Route path="/" element={<Dashboard state={state} installPrompt={installPrompt} onInstall={handleInstallClick} />} />
             <Route path="/log" element={<MealLogger onLogMeal={logMeal} />} />
+            <Route path="/coach" element={<CoachChat />} />
             <Route path="/weight" element={<WeightTracker history={state.weightHistory} onLogWeight={logWeight} />} />
             <Route path="/mood" element={<WellbeingView logs={state.logs} onLogGrade={logMood} />} />
             <Route path="/settings" element={
               <SettingsView 
-                profile={state.profile} 
+                state={state} 
                 onUpdateProfile={updateProfile}
+                onImport={importData}
                 onReset={resetApp}
                 installPrompt={installPrompt}
                 onInstall={handleInstallClick}

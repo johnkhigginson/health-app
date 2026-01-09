@@ -1,17 +1,21 @@
-import React from 'react';
-import { Moon, Sun, Bell, Download } from 'lucide-react';
-import { UserProfile } from '../types';
+import React, { useState } from 'react';
+import { Moon, Sun, Bell, Download, Mic, Play, Square, FileDown, FileUp } from 'lucide-react';
+import { AppState, UserProfile } from '../types';
 import { Card } from '../components/ui/Card';
+import { AVAILABLE_VOICES, generateSpeech } from '../services/geminiService';
 
 interface SettingsViewProps {
-  profile: UserProfile;
+  state: AppState;
   onUpdateProfile: (p: UserProfile) => void;
+  onImport: (json: string) => boolean;
   onReset: () => void;
   installPrompt: any;
   onInstall: () => void;
 }
 
-export const SettingsView: React.FC<SettingsViewProps> = ({ profile, onUpdateProfile, onReset, installPrompt, onInstall }) => {
+export const SettingsView: React.FC<SettingsViewProps> = ({ state, onUpdateProfile, onImport, onReset, installPrompt, onInstall }) => {
+  const profile = state.profile;
+  const [playingVoice, setPlayingVoice] = useState<string | null>(null);
   
   const handleToggleTheme = () => {
     const newTheme = profile.theme === 'light' ? 'dark' : 'light';
@@ -42,6 +46,66 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ profile, onUpdatePro
     });
   };
 
+  const handleVoiceChange = (voiceId: string) => {
+    onUpdateProfile({ ...profile, voice: voiceId });
+  };
+
+  const previewVoice = async (voiceId: string) => {
+    if (playingVoice) return;
+    setPlayingVoice(voiceId);
+    try {
+      const buffer = await generateSpeech("Hello, I am your health coach.", voiceId);
+      if (buffer) {
+        const ctx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
+        const source = ctx.createBufferSource();
+        source.buffer = buffer;
+        source.connect(ctx.destination);
+        source.onended = () => setPlayingVoice(null);
+        source.start(0);
+      } else {
+        setPlayingVoice(null);
+      }
+    } catch (e) {
+      console.error(e);
+      setPlayingVoice(null);
+    }
+  };
+
+  const handleExport = () => {
+    const dataStr = JSON.stringify(state, null, 2);
+    const blob = new Blob([dataStr], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `take-care-backup-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleImportClick = () => {
+    document.getElementById('import-file')?.click();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const content = event.target?.result as string;
+      if (content) {
+        if(window.confirm("This will overwrite your current data. Are you sure you want to proceed?")) {
+           const success = onImport(content);
+           if (success) alert("Data imported successfully!");
+        }
+      }
+    };
+    reader.readAsText(file);
+    // Reset input so same file can be selected again if needed
+    e.target.value = '';
+  };
+
   return (
     <div className="pb-24">
       <h1 className="text-2xl font-bold text-slate-800 dark:text-white mb-6">Settings</h1>
@@ -70,6 +134,55 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ profile, onUpdatePro
             </div>
           </Card>
         )}
+
+        {/* Coach Voice */}
+        <Card>
+           <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-500">
+                <Mic className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-slate-800 dark:text-white">Coach Voice</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Choose how your AI sounds</p>
+              </div>
+           </div>
+           
+           <div className="grid gap-2">
+             {AVAILABLE_VOICES.map((voice) => (
+               <div 
+                 key={voice.id}
+                 onClick={() => handleVoiceChange(voice.id)}
+                 className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all ${
+                   profile.voice === voice.id 
+                     ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-500 ring-1 ring-emerald-500' 
+                     : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-emerald-300 dark:hover:border-emerald-700'
+                 }`}
+               >
+                 <div className="flex items-center gap-3">
+                   <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                      profile.voice === voice.id ? 'border-emerald-600' : 'border-slate-300 dark:border-slate-600'
+                   }`}>
+                      {profile.voice === voice.id && <div className="w-2 h-2 rounded-full bg-emerald-600" />}
+                   </div>
+                   <div>
+                      <span className="text-sm font-medium text-slate-800 dark:text-white block">{voice.label}</span>
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400">{voice.style}</span>
+                   </div>
+                 </div>
+                 
+                 <button 
+                   onClick={(e) => {
+                     e.stopPropagation();
+                     previewVoice(voice.id);
+                   }}
+                   className="p-2 text-slate-400 hover:text-emerald-600 transition"
+                 >
+                   {playingVoice === voice.id ? <Square className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4" />}
+                 </button>
+               </div>
+             ))}
+           </div>
+        </Card>
 
         {/* Appearance */}
         <Card className="flex items-center justify-between">
@@ -121,6 +234,34 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ profile, onUpdatePro
               />
             </div>
           )}
+        </Card>
+
+        {/* Data Backup */}
+        <Card>
+            <h3 className="font-semibold text-slate-800 dark:text-white mb-4">Data Backup</h3>
+            <div className="flex gap-3">
+              <button 
+                 onClick={handleExport}
+                 className="flex-1 flex flex-col items-center gap-2 p-4 rounded-xl bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 transition"
+              >
+                 <FileDown className="w-6 h-6 text-slate-600 dark:text-slate-300" />
+                 <span className="text-xs font-medium text-slate-600 dark:text-slate-300">Export JSON</span>
+              </button>
+              <button 
+                 onClick={handleImportClick}
+                 className="flex-1 flex flex-col items-center gap-2 p-4 rounded-xl bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 transition"
+              >
+                 <FileUp className="w-6 h-6 text-slate-600 dark:text-slate-300" />
+                 <span className="text-xs font-medium text-slate-600 dark:text-slate-300">Import JSON</span>
+              </button>
+              <input 
+                 id="import-file" 
+                 type="file" 
+                 accept=".json" 
+                 className="hidden" 
+                 onChange={handleFileChange}
+              />
+            </div>
         </Card>
 
         {/* Data Management */}

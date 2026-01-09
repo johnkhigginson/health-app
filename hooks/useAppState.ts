@@ -9,8 +9,7 @@ export const useAppState = () => {
       const saved = localStorage.getItem(STATE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
-        // Robust Merge: Ensure new profile fields from DEFAULT_PROFILE exist 
-        // even if the saved state is from an older version.
+        // Robust Merge
         return {
           ...parsed,
           profile: { ...DEFAULT_PROFILE, ...parsed.profile },
@@ -59,13 +58,11 @@ export const useAppState = () => {
         }
       }
     } else {
-        // Allow streak to persist if logged yesterday
         let yesterday = new Date();
         yesterday.setDate(yesterday.getDate() - 1);
         const yStr = yesterday.toISOString().split('T')[0];
         if (state.logs[yStr] && state.logs[yStr].meals.length > 0) {
-           // We don't update the number, but we don't reset it to 0 either for now
-           // For simplicity, we just check actively logged days in this logic
+           // Maintain streak visualization if missed today but had yesterday
         }
     }
     
@@ -79,17 +76,57 @@ export const useAppState = () => {
   };
 
   const logMeal = (meal: Meal) => {
-    const today = new Date().toISOString().split('T')[0];
+    // Determine date from meal timestamp, not just 'today', to allow retroactive logging if needed
+    const dateKey = new Date(meal.timestamp).toISOString().split('T')[0];
+    
     setState(prev => {
-      const existingLog = prev.logs[today] || { date: today, meals: [] };
+      const existingLog = prev.logs[dateKey] || { date: dateKey, meals: [] };
       return {
         ...prev,
         logs: {
           ...prev.logs,
-          [today]: {
+          [dateKey]: {
             ...existingLog,
             meals: [...existingLog.meals, meal]
           }
+        }
+      };
+    });
+  };
+
+  const editMeal = (meal: Meal) => {
+    const dateKey = new Date(meal.timestamp).toISOString().split('T')[0];
+    
+    setState(prev => {
+      const log = prev.logs[dateKey];
+      if (!log) return prev;
+
+      const updatedMeals = log.meals.map(m => m.id === meal.id ? meal : m);
+
+      return {
+        ...prev,
+        logs: {
+          ...prev.logs,
+          [dateKey]: { ...log, meals: updatedMeals }
+        }
+      };
+    });
+  };
+
+  const deleteMeal = (mealId: string, timestamp: string) => {
+    const dateKey = new Date(timestamp).toISOString().split('T')[0];
+    
+    setState(prev => {
+      const log = prev.logs[dateKey];
+      if (!log) return prev;
+
+      const updatedMeals = log.meals.filter(m => m.id !== mealId);
+
+      return {
+        ...prev,
+        logs: {
+          ...prev.logs,
+          [dateKey]: { ...log, meals: updatedMeals }
         }
       };
     });
@@ -142,12 +179,42 @@ export const useAppState = () => {
       }
   };
 
+  const importData = (jsonData: string) => {
+    try {
+      const parsed = JSON.parse(jsonData);
+      // Basic validation check for essential keys
+      if (!parsed.profile || !parsed.logs) {
+         alert("Invalid backup file format.");
+         return false;
+      }
+      
+      // Robust Merge to ensure app doesn't break if file is old version
+      const newState: AppState = {
+        ...parsed,
+        profile: { ...DEFAULT_PROFILE, ...parsed.profile },
+        logs: parsed.logs || {},
+        weightHistory: parsed.weightHistory || [],
+        streak: parsed.streak || 0
+      };
+      
+      setState(newState);
+      return true;
+    } catch (e) {
+      console.error("Import failed", e);
+      alert("Failed to import data. File might be corrupted.");
+      return false;
+    }
+  };
+
   return {
       state,
       updateProfile,
       logMeal,
+      editMeal,
+      deleteMeal,
       logWeight,
       logMood,
+      importData,
       resetApp
   };
 };
