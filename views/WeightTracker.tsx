@@ -96,32 +96,50 @@ export const WeightTracker: React.FC<WeightTrackerProps> = ({ history, onLogWeig
       <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Weight Tracker</h1>
 
       <Card>
-        <div className="flex justify-between items-center mb-3">
-          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-            Log weight for {existingWeightForDate ? '(Update)' : ''}
-          </label>
+        <div className="flex flex-col gap-4 mb-2">
+          <div className="flex justify-between items-center">
+            <label className="text-base font-semibold text-slate-800 dark:text-slate-200">
+              Log Weight
+            </label>
+            {existingWeightForDate && (
+              <span className="text-xs font-bold text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400 px-2 py-1 rounded">
+                Update Entry
+              </span>
+            )}
+          </div>
            
-           {/* Date Navigation */}
-           <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-700 rounded-lg p-1">
-             <button onClick={() => changeDate(-1)} className="p-1 hover:bg-slate-200 dark:hover:bg-slate-600 rounded">
-               <ChevronLeft className="w-4 h-4 text-slate-600 dark:text-slate-300" />
+           {/* Prominent Date Navigation */}
+           <div className="flex items-center justify-between bg-slate-100 dark:bg-slate-700/50 rounded-xl p-1">
+             <button 
+               onClick={() => changeDate(-1)} 
+               className="p-3 hover:bg-white dark:hover:bg-slate-600 rounded-lg transition-all active:scale-95 text-slate-500 dark:text-slate-400"
+             >
+               <ChevronLeft className="w-6 h-6" />
              </button>
-             <div className="relative">
+             
+             <div className="text-center">
                 <input 
                   type="date" 
                   value={selectedDate}
                   onChange={(e) => setSelectedDate(e.target.value)}
-                  className="bg-transparent text-slate-700 dark:text-slate-200 text-sm font-medium outline-none border-none text-center w-28 appearance-none"
+                  className="bg-transparent text-slate-800 dark:text-white text-lg font-bold outline-none border-none text-center w-36 appearance-none cursor-pointer"
                   style={{ colorScheme: 'light dark' }}
                 />
+                <div className="text-xs text-slate-400 font-medium -mt-1 pointer-events-none">
+                  {new Date(selectedDate + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'long' })}
+                </div>
              </div>
-             <button onClick={() => changeDate(1)} className="p-1 hover:bg-slate-200 dark:hover:bg-slate-600 rounded">
-               <ChevronRight className="w-4 h-4 text-slate-600 dark:text-slate-300" />
+             
+             <button 
+               onClick={() => changeDate(1)} 
+               className="p-3 hover:bg-white dark:hover:bg-slate-600 rounded-lg transition-all active:scale-95 text-slate-500 dark:text-slate-400"
+             >
+               <ChevronRight className="w-6 h-6" />
              </button>
            </div>
         </div>
 
-        <div className="flex gap-4">
+        <div className="flex gap-4 mt-4">
           <input 
             type="number" 
             className="flex-1 p-3 bg-white text-slate-900 border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
