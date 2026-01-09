@@ -1,8 +1,9 @@
-const CACHE_NAME = 'nutriflow-v1';
+const CACHE_NAME = 'take-care-v1';
 const urlsToCache = [
   '/',
   '/index.html',
   '/manifest.json',
+  '/logo.svg',
   'https://cdn.tailwindcss.com'
 ];
 

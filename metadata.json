@@ -1,5 +1,5 @@
 {
-  "name": "Diet + Weight Tracker",
+  "name": "Take Care",
   "description": "A smart diet tracking assistant powered by Gemini. Track meals via text or voice, get nutritional breakdowns, monitor weight goals, and receive personalized coaching.",
   "requestFramePermissions": [
     "microphone"
