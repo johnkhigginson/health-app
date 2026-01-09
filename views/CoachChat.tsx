@@ -60,7 +60,8 @@ export const CoachChat: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-80px)]">
+    // Updated to use 100dvh
+    <div className="flex flex-col h-[calc(100dvh-50px)] sm:h-[calc(100%-10px)]">
       <div className="flex-none p-4 pb-0 flex items-center gap-2">
         <button onClick={() => navigate('/')} className="p-2 -ml-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition">
            <ChevronLeft className="w-6 h-6 text-slate-600 dark:text-slate-300" />
@@ -98,7 +99,7 @@ export const CoachChat: React.FC = () => {
       </div>
 
       {/* Input Area */}
-      <div className="flex-none bg-slate-50 dark:bg-slate-900 p-4 pt-2">
+      <div className="flex-none bg-slate-50 dark:bg-slate-900 p-4 pt-2 pb-safe">
         <div className="flex items-end gap-2 relative">
           <div className="flex-1 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-center p-1 focus-within:ring-2 focus-within:ring-emerald-500 transition-all">
             <textarea

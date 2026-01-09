@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Trophy, Settings, Brain, Flame, Scale, Download, X, ChevronRight, Volume2, MessageSquare, Square } from 'lucide-react';
+import { Trophy, Settings, Brain, Flame, Scale, Download, X, ChevronRight, Volume2, MessageSquare, Square, Share } from 'lucide-react';
 import { AppState, Meal } from '../types';
 import { calculateTargets, getDailyCoachMessage, generateSpeech } from '../services/geminiService';
 import { Card } from '../components/ui/Card';
@@ -14,9 +14,11 @@ interface DashboardProps {
   state: AppState;
   installPrompt: any;
   onInstall: () => void;
+  isIOS: boolean;
+  isStandalone: boolean;
 }
 
-export const Dashboard: React.FC<DashboardProps> = ({ state, installPrompt, onInstall }) => {
+export const Dashboard: React.FC<DashboardProps> = ({ state, installPrompt, onInstall, isIOS, isStandalone }) => {
   const { editMeal, deleteMeal } = useAppState();
   const navigate = useNavigate();
   
@@ -32,7 +34,15 @@ export const Dashboard: React.FC<DashboardProps> = ({ state, installPrompt, onIn
   const audioContextRef = useRef<AudioContext | null>(null);
   const sourceNodeRef = useRef<AudioBufferSourceNode | null>(null);
 
-  const today = new Date().toISOString().split('T')[0];
+  // Use local date for 'today' to ensure dashboard shows current day in user's timezone
+  const today = useMemo(() => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }, []);
+
   const todayLog = state.logs[today] || { date: today, meals: [], weight: undefined };
   
   const targets = useMemo(() => calculateTargets(state.profile), [state.profile]);
@@ -112,6 +122,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ state, installPrompt, onIn
     navigate('/coach', { state: { initialContext: coachMessage } });
   };
 
+  const showInstallBanner = !isStandalone && !dismissInstall && (installPrompt || isIOS);
+
   return (
     <div className="pb-24 space-y-6">
       <header className="flex justify-between items-center">
@@ -131,24 +143,18 @@ export const Dashboard: React.FC<DashboardProps> = ({ state, installPrompt, onIn
       </header>
 
       {/* Install Prompt Banner */}
-      {installPrompt && !dismissInstall && (
-        <div className="bg-emerald-600 text-white p-4 rounded-2xl shadow-lg flex items-center justify-between animate-fade-in-up">
-           <div className="flex items-center gap-3">
-             <div className="p-2 bg-white/20 rounded-lg">
-               <Download className="w-6 h-6" />
+      {showInstallBanner && (
+        <div className="bg-emerald-600 text-white p-4 rounded-2xl shadow-lg flex flex-col gap-3 animate-fade-in-up">
+           <div className="flex items-center justify-between">
+             <div className="flex items-center gap-3">
+               <div className="p-2 bg-white/20 rounded-lg">
+                 <Download className="w-6 h-6" />
+               </div>
+               <div>
+                 <h3 className="font-bold text-sm">Install App</h3>
+                 <p className="text-emerald-100 text-xs">Better experience, offline access</p>
+               </div>
              </div>
-             <div>
-               <h3 className="font-bold text-sm">Install App</h3>
-               <p className="text-emerald-100 text-xs">Add to home screen</p>
-             </div>
-           </div>
-           <div className="flex gap-2">
-             <button 
-               onClick={onInstall} 
-               className="bg-white text-emerald-600 px-4 py-2 rounded-lg text-xs font-bold shadow-sm hover:bg-emerald-50 transition"
-             >
-               Install
-             </button>
              <button 
                onClick={() => setDismissInstall(true)}
                className="p-2 hover:bg-emerald-700 rounded-lg transition"
@@ -156,6 +162,22 @@ export const Dashboard: React.FC<DashboardProps> = ({ state, installPrompt, onIn
                <X className="w-4 h-4" />
              </button>
            </div>
+           
+           {/* Dynamic Content based on Platform */}
+           {isIOS ? (
+             <div className="bg-white/10 rounded-lg p-3 text-xs leading-relaxed">
+               <p className="font-semibold mb-1">To install on iOS:</p>
+               <div className="flex items-center gap-1">1. Tap the Share button <Share className="w-3 h-3" /></div>
+               <div>2. Scroll down and tap <strong>"Add to Home Screen"</strong></div>
+             </div>
+           ) : (
+             <button 
+               onClick={onInstall} 
+               className="w-full bg-white text-emerald-600 py-2 rounded-lg text-xs font-bold shadow-sm hover:bg-emerald-50 transition"
+             >
+               Install Now
+             </button>
+           )}
         </div>
       )}
 

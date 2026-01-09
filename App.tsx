@@ -27,8 +27,18 @@ const App: React.FC = () => {
 
   // PWA Install Prompt Logic
   const [installPrompt, setInstallPrompt] = useState<any>(null);
+  const [isIOS, setIsIOS] = useState(false);
+  const [isStandalone, setIsStandalone] = useState(false);
 
   useEffect(() => {
+    // Detect iOS
+    const ios = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+    setIsIOS(ios);
+
+    // Detect Standalone mode
+    const standalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true;
+    setIsStandalone(standalone);
+
     const handler = (e: any) => {
       e.preventDefault();
       setInstallPrompt(e);
@@ -62,28 +72,45 @@ const App: React.FC = () => {
 
   return (
     <HashRouter>
-      <div className="max-w-md mx-auto min-h-screen bg-slate-50 dark:bg-slate-900 shadow-2xl overflow-hidden relative transition-colors duration-300">
+      {/* 
+        Layout Update: 
+        - Mobile: Full width/height (100dvh)
+        - Desktop (sm+): Centered card-like app
+      */}
+      <div className="w-full h-[100dvh] sm:h-[calc(100dvh-2rem)] sm:my-4 sm:max-w-md sm:mx-auto sm:rounded-3xl sm:shadow-2xl sm:overflow-hidden bg-slate-50 dark:bg-slate-900 relative transition-colors duration-300 flex flex-col">
         
         {/* Main Content Area */}
-        <div className="p-4 h-full overflow-y-auto custom-scrollbar">
-          <Routes>
-            <Route path="/" element={<Dashboard state={state} installPrompt={installPrompt} onInstall={handleInstallClick} />} />
-            <Route path="/log" element={<MealLogger onLogMeal={logMeal} />} />
-            <Route path="/coach" element={<CoachChat />} />
-            <Route path="/weight" element={<WeightTracker history={state.weightHistory} onLogWeight={logWeight} />} />
-            <Route path="/mood" element={<WellbeingView logs={state.logs} onLogGrade={logMood} />} />
-            <Route path="/settings" element={
-              <SettingsView 
-                state={state} 
-                onUpdateProfile={updateProfile}
-                onImport={importData}
-                onReset={resetApp}
-                installPrompt={installPrompt}
-                onInstall={handleInstallClick}
-              />
-            } />
-            <Route path="*" element={<Navigate to="/" />} />
-          </Routes>
+        <div className="flex-1 overflow-y-auto custom-scrollbar pt-safe">
+          <div className="p-4">
+            <Routes>
+              <Route path="/" element={
+                <Dashboard 
+                  state={state} 
+                  installPrompt={installPrompt} 
+                  onInstall={handleInstallClick} 
+                  isIOS={isIOS}
+                  isStandalone={isStandalone}
+                />
+              } />
+              <Route path="/log" element={<MealLogger onLogMeal={logMeal} />} />
+              <Route path="/coach" element={<CoachChat />} />
+              <Route path="/weight" element={<WeightTracker history={state.weightHistory} onLogWeight={logWeight} />} />
+              <Route path="/mood" element={<WellbeingView logs={state.logs} onLogGrade={logMood} />} />
+              <Route path="/settings" element={
+                <SettingsView 
+                  state={state} 
+                  onUpdateProfile={updateProfile}
+                  onImport={importData}
+                  onReset={resetApp}
+                  installPrompt={installPrompt}
+                  onInstall={handleInstallClick}
+                  isIOS={isIOS}
+                  isStandalone={isStandalone}
+                />
+              } />
+              <Route path="*" element={<Navigate to="/" />} />
+            </Routes>
+          </div>
         </div>
 
         {/* Action Menu Overlay */}

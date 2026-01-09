@@ -143,6 +143,9 @@ export const createMealChatSession = () => {
 export const createCoachChatSession = (profile: UserProfile) => {
   if (!apiKey) throw new Error("API Key missing");
 
+  const currentLbs = Math.round(profile.currentWeight * 2.20462);
+  const targetLbs = Math.round(profile.targetWeight * 2.20462);
+
   return ai.chats.create({
     model: 'gemini-3-flash-preview',
     config: {
@@ -150,13 +153,14 @@ export const createCoachChatSession = (profile: UserProfile) => {
       
       User Context:
       - Name: ${profile.name}
-      - Goal: ${profile.currentWeight}kg to ${profile.targetWeight}kg
+      - Goal: ${currentLbs} lbs to ${targetLbs} lbs
       
       Your Role:
       1. Discuss the user's daily insights, mood, and diet progress.
       2. Be encouraging but realistic.
       3. Keep responses concise (under 3 sentences usually) unless explaining a complex topic.
       4. Ask follow-up questions to keep the conversation engaging.
+      5. Use Imperial units (lbs) for weight discussions.
       `,
     }
   });
@@ -184,8 +188,11 @@ export const getDailyCoachMessage = async (profile: UserProfile, todayLog: Daily
     .map(l => `${l.date}: ${l.moodGrade}`)
     .join(', ');
 
+  const currentLbs = Math.round(profile.currentWeight * 2.20462);
+  const targetLbs = Math.round(profile.targetWeight * 2.20462);
+
   const context = `
-    User Profile: ${age} years old, ${profile.currentWeight}kg, Goal: ${profile.targetWeight}kg.
+    User Profile: ${age} years old, ${currentLbs} lbs, Goal: ${targetLbs} lbs.
     Target Calories: ${targets.calories}.
     Today Consumed: ${consumed.calories} kcal, P: ${consumed.protein}g, C: ${consumed.carbs}g, F: ${consumed.fat}g.
     Recent Mood Grades (A is best, F is worst): ${recentMoods || "No mood logged recently"}.
@@ -197,7 +204,7 @@ export const getDailyCoachMessage = async (profile: UserProfile, todayLog: Daily
       model: 'gemini-3-flash-preview',
       contents: `Give a brief, encouraging coaching message (max 2-3 sentences) based on the user's progress and mood. 
       If mood is low, be extra supportive. If they are under-eating, encourage a healthy snack. 
-      ALWAYS end with a short, engaging question to spark conversation.`,
+      ALWAYS end with a short, engaging question to spark conversation. Use pounds (lbs) for weight if mentioned.`,
       config: {
         systemInstruction: `You are a friendly diet coach context: ${context}`,
       }

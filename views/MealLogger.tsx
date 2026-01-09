@@ -124,7 +124,8 @@ export const MealLogger: React.FC<MealLoggerProps> = ({ onLogMeal }) => {
   if (redirect) return <Navigate to="/" />;
 
   return (
-    <div className="flex flex-col h-[calc(100vh-80px)] relative">
+    // Updated container height to fit mobile viewport dynamically
+    <div className="flex flex-col h-[calc(100dvh-100px)] relative">
       <div className="flex-none p-4 pb-0">
         <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Food Logger</h1>
       </div>
@@ -159,7 +160,7 @@ export const MealLogger: React.FC<MealLoggerProps> = ({ onLogMeal }) => {
       </div>
 
       {/* Input or Draft Panel */}
-      <div className="absolute bottom-0 left-0 right-0 p-4 pt-2 bg-slate-50 dark:bg-slate-900 transition-transform duration-300">
+      <div className="absolute bottom-0 left-0 right-0 p-4 pt-2 bg-slate-50 dark:bg-slate-900 transition-transform duration-300 pb-safe-0">
         
         {/* Draft Panel - Slides up/replaces input when meal detected */}
         {draftMeal ? (

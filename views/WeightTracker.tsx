@@ -27,7 +27,8 @@ export const WeightTracker: React.FC<WeightTrackerProps> = ({ history, onLogWeig
     return [...history].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()).map(h => ({
       ...h,
       weight: Math.round(h.weight * KG_TO_LBS),
-      displayDate: new Date(h.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+      // Use local date parsing for display
+      displayDate: new Date(h.date + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
     }));
   }, [history]);
 
@@ -89,7 +90,10 @@ export const WeightTracker: React.FC<WeightTrackerProps> = ({ history, onLogWeig
         <h3 className="font-bold text-slate-800 dark:text-white px-1">History</h3>
         {[...history].reverse().slice(0, 5).map((entry, idx) => (
           <div key={idx} className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 flex justify-between items-center transition-colors">
-            <span className="text-slate-600 dark:text-slate-300">{new Date(entry.date).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}</span>
+            <span className="text-slate-600 dark:text-slate-300">
+              {/* Parse date locally to avoid timezone shift */}
+              {new Date(entry.date + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
+            </span>
             <span className="font-bold text-slate-800 dark:text-white">{Math.round(entry.weight * KG_TO_LBS)} lbs</span>
           </div>
         ))}

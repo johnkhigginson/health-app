@@ -36,13 +36,21 @@ const calculateAverageGrade = (grades: Grade[]): string => {
   return 'F';
 };
 
+const getLocalDate = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 interface WellbeingViewProps {
   logs: Record<string, DailyLog>;
   onLogGrade: (date: string, grade: Grade) => void;
 }
 
 export const WellbeingView: React.FC<WellbeingViewProps> = ({ logs, onLogGrade }) => {
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState(getLocalDate());
   const [selectedGrade, setSelectedGrade] = useState<Grade | null>(null);
 
   useEffect(() => {
@@ -75,7 +83,8 @@ export const WellbeingView: React.FC<WellbeingViewProps> = ({ logs, onLogGrade }
     const yearGrades: Grade[] = [];
 
     allLogs.forEach(log => {
-      const logDate = new Date(log.date);
+      // Append T00:00:00 to force local time parsing for date strings
+      const logDate = new Date(log.date + 'T00:00:00');
       if (log.moodGrade) {
         if (isSameWeek(logDate)) weekGrades.push(log.moodGrade);
         if (isSameMonth(logDate)) monthGrades.push(log.moodGrade);
@@ -159,7 +168,10 @@ export const WellbeingView: React.FC<WellbeingViewProps> = ({ logs, onLogGrade }
                <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm ${getGradeColor(log.moodGrade)}`}>
                  {log.moodGrade}
                </div>
-               <span className="text-slate-600 dark:text-slate-300 font-medium">{new Date(log.date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</span>
+               <span className="text-slate-600 dark:text-slate-300 font-medium">
+                 {/* Appending T00:00:00 ensures string is parsed as local time, preventing UTC shift to previous day */}
+                 {new Date(log.date + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
+               </span>
             </div>
             <button 
               onClick={() => setSelectedDate(log.date)}

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Moon, Sun, Bell, Download, Mic, Play, Square, FileDown, FileUp, ChevronDown, ChevronUp } from 'lucide-react';
+import { Moon, Sun, Bell, Download, Mic, Play, Square, FileDown, FileUp, ChevronDown, ChevronUp, Share, Check } from 'lucide-react';
 import { AppState, UserProfile } from '../types';
 import { Card } from '../components/ui/Card';
 import { AVAILABLE_VOICES, generateSpeech } from '../services/geminiService';
@@ -11,9 +11,11 @@ interface SettingsViewProps {
   onReset: () => void;
   installPrompt: any;
   onInstall: () => void;
+  isIOS: boolean;
+  isStandalone: boolean;
 }
 
-export const SettingsView: React.FC<SettingsViewProps> = ({ state, onUpdateProfile, onImport, onReset, installPrompt, onInstall }) => {
+export const SettingsView: React.FC<SettingsViewProps> = ({ state, onUpdateProfile, onImport, onReset, installPrompt, onInstall, isIOS, isStandalone }) => {
   const profile = state.profile;
   const [playingVoice, setPlayingVoice] = useState<string | null>(null);
   const [isVoiceSettingsOpen, setIsVoiceSettingsOpen] = useState(false);
@@ -113,25 +115,34 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ state, onUpdateProfi
       
       <div className="space-y-4">
         
-        {/* PWA Install Button (Conditional) */}
-        {installPrompt && (
-          <Card className="bg-emerald-600 text-white border-none relative overflow-hidden group cursor-pointer animate-fade-in-up" onClick={onInstall}>
+        {/* PWA Install Button (Shown if not installed) */}
+        {!isStandalone && (installPrompt || isIOS) && (
+          <Card className="bg-emerald-600 text-white border-none relative overflow-hidden group animate-fade-in-up">
             <div className="absolute right-0 top-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-110"></div>
-            <div className="relative flex items-center justify-between">
-              <div className="flex gap-3 items-center">
+            <div className="relative">
+              <div className="flex gap-3 items-center mb-3">
                  <div className="p-2 bg-white/20 rounded-lg">
                    <Download className="w-6 h-6 text-white" />
                  </div>
                  <div>
                    <h3 className="font-bold text-white text-lg">Install App</h3>
-                   <p className="text-emerald-100 text-sm">Add to home screen for better access</p>
+                   <p className="text-emerald-100 text-sm">Better experience & full screen</p>
                  </div>
               </div>
-              <button 
-                className="bg-white text-emerald-600 px-5 py-2 rounded-xl text-sm font-bold shadow-lg hover:bg-emerald-50 transition"
-              >
-                Install
-              </button>
+              
+              {isIOS ? (
+                 <div className="bg-white/10 rounded-xl p-3 text-xs leading-relaxed space-y-1">
+                   <div className="flex items-center gap-2">1. Tap Share <Share className="w-3 h-3" /></div>
+                   <div className="flex items-center gap-2">2. Tap <strong>"Add to Home Screen"</strong></div>
+                 </div>
+              ) : (
+                <button 
+                  onClick={onInstall}
+                  className="w-full bg-white text-emerald-600 px-5 py-3 rounded-xl text-sm font-bold shadow-lg hover:bg-emerald-50 transition"
+                >
+                  Install Now
+                </button>
+              )}
             </div>
           </Card>
         )}
