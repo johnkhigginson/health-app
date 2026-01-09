@@ -274,7 +274,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ state, installPrompt, onIn
         onClose={() => setEditingMeal(null)}
         initialMeal={editingMeal}
         onSave={editMeal}
-        onDelete={(id) => editingMeal && deleteMeal(id, editingMeal.timestamp)}
+        onDelete={(id) => {
+          if (editingMeal) {
+            deleteMeal(id, editingMeal.timestamp);
+            setEditingMeal(null);
+          }
+        }}
       />
     </div>
   );

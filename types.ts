@@ -1,6 +1,6 @@
 export interface UserProfile {
   name: string;
-  age: number;
+  birthDate: string; // YYYY-MM-DD format
   height: number; // cm
   currentWeight: number; // kg
   targetWeight: number; // kg
@@ -59,7 +59,7 @@ export const ACTIVITY_MULTIPLIERS = {
 
 export const DEFAULT_PROFILE: UserProfile = {
   name: '',
-  age: 30,
+  birthDate: '1990-01-01',
   height: 170,
   currentWeight: 70,
   targetWeight: 65,

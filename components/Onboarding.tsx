@@ -50,12 +50,12 @@ export const Onboarding: React.FC<{ onComplete: (profile: UserProfile) => void }
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Age</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Birth Date</label>
                 <input 
-                  type="number" 
+                  type="date" 
                   className="w-full p-3 bg-white text-slate-900 border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
-                  value={formData.age}
-                  onChange={(e) => handleChange('age', parseInt(e.target.value) || 0)}
+                  value={formData.birthDate}
+                  onChange={(e) => handleChange('birthDate', e.target.value)}
                 />
               </div>
               <div>

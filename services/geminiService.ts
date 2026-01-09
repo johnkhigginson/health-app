@@ -46,9 +46,23 @@ const decodeAudioData = async (
   return buffer;
 };
 
+const calculateAge = (birthDate: string): number => {
+  if (!birthDate) return 30; // Fallback
+  const today = new Date();
+  const birth = new Date(birthDate);
+  let age = today.getFullYear() - birth.getFullYear();
+  const m = today.getMonth() - birth.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
+    age--;
+  }
+  return age;
+};
+
 export const calculateTargets = (profile: UserProfile) => {
+  const age = calculateAge(profile.birthDate);
+
   // Mifflin-St Jeor Equation
-  let bmr = 10 * profile.currentWeight + 6.25 * profile.height - 5 * profile.age;
+  let bmr = 10 * profile.currentWeight + 6.25 * profile.height - 5 * age;
   if (profile.gender === 'male') bmr += 5;
   else if (profile.gender === 'female') bmr -= 161;
 
@@ -90,15 +104,16 @@ export const createMealChatSession = () => {
     model: 'gemini-3-flash-preview',
     config: {
       systemInstruction: `You are a friendly, conversational nutritionist AI. 
-      Your goal is to help the user log their meal by understanding what they ate and estimating the nutrition.
+      Your goal is to help the user log their meal by understanding what they ate, when they ate it, and estimating the nutrition.
       
-      1. **Conversational Style**: Be brief, encouraging, and human-like. If the user's description is vague (e.g., "I had a sandwich"), ask clarifying questions (e.g., "What kind of bread and filling?"). 
-      2. **Estimation**: Always estimate the nutrition for the *entire* meal described so far in the current session.
-      3. **Output Format**: You must ALWAYS return a JSON object with two parts:
+      1. **Conversational Style**: Be brief, encouraging, and human-like. 
+      2. **Estimation**: Always estimate the nutrition for the *entire* meal.
+      3. **Time Extraction**: If the user mentions a time (e.g., "I had eggs at 8am" or "Lunch at noon"), extract it in 24-hour format (HH:MM). If no time is mentioned, return null for time.
+      4. **Output Format**: You must ALWAYS return a JSON object with two parts:
          - 'conversationalResponse': Your message to the user.
          - 'mealData': The structured nutrition data. If you don't have enough info to estimate yet, this can be null.
       
-      The 'mealData' should include a 'short_tip' (max 10 words) for the log summary.`,
+      The 'mealData' should include a 'short_tip' (max 10 words).`,
       responseMimeType: "application/json",
       responseSchema: {
         type: Type.OBJECT,
@@ -113,6 +128,7 @@ export const createMealChatSession = () => {
               protein: { type: Type.INTEGER },
               carbs: { type: Type.INTEGER },
               fat: { type: Type.INTEGER },
+              time: { type: Type.STRING, description: "Time of meal in HH:MM format (24h) if explicitly mentioned, else null", nullable: true },
               short_tip: { type: Type.STRING, description: "A very short nutritional tag (e.g. 'High Protein')" }
             },
             required: ["name", "calories", "protein", "carbs", "fat", "short_tip"]
@@ -152,6 +168,7 @@ export const getDailyCoachMessage = async (profile: UserProfile, todayLog: Daily
   if (!apiKey) return "Keep tracking your meals to reach your goals!";
 
   const targets = calculateTargets(profile);
+  const age = calculateAge(profile.birthDate);
   const consumed = todayLog.meals.reduce((acc, meal) => ({
     calories: acc.calories + meal.calories,
     protein: acc.protein + meal.protein,
@@ -168,7 +185,7 @@ export const getDailyCoachMessage = async (profile: UserProfile, todayLog: Daily
     .join(', ');
 
   const context = `
-    User Profile: ${profile.age}yo, ${profile.currentWeight}kg, Goal: ${profile.targetWeight}kg.
+    User Profile: ${age} years old, ${profile.currentWeight}kg, Goal: ${profile.targetWeight}kg.
     Target Calories: ${targets.calories}.
     Today Consumed: ${consumed.calories} kcal, P: ${consumed.protein}g, C: ${consumed.carbs}g, F: ${consumed.fat}g.
     Recent Mood Grades (A is best, F is worst): ${recentMoods || "No mood logged recently"}.
