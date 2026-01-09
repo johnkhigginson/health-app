@@ -32,10 +32,13 @@ export interface WeightEntry {
   weight: number;
 }
 
+export type Grade = 'A' | 'B' | 'C' | 'D' | 'F';
+
 export interface DailyLog {
   date: string;
   meals: Meal[];
   weight?: number;
+  moodGrade?: Grade;
 }
 
 export interface AppState {
