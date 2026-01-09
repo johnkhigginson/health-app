@@ -7,9 +7,7 @@
   </defs>
   <rect width="512" height="512" rx="120" fill="url(#grad1)"/>
   <g transform="translate(106, 106) scale(0.6)">
-    <!-- Heart shape representing health/mood -->
+    <!-- Heart shape -->
     <path d="M256 448l-30.164-27.211C118.718 322.442 48 258.61 48 179.095 48 114.221 97.918 64 162.4 64c36.399 0 70.717 17.047 93.6 43.947C279.283 81.047 313.6 64 350 64 414.482 64 464 114.221 464 179.095c0 79.516-70.719 143.348-177.836 241.694L256 448z" fill="white"/>
-    <!-- Leaf accent -->
-    <path d="M350 64c0-30 25-50 50-50s30 30 10 50c-15 15-60 0-60 0z" fill="#ecfdf5"/>
   </g>
 </svg>

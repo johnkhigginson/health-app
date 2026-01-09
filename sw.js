@@ -1,4 +1,4 @@
-const CACHE_NAME = 'take-care-v1';
+const CACHE_NAME = 'take-care-v2';
 const urlsToCache = [
   '/',
   '/index.html',
