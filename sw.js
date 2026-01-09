@@ -25,9 +25,14 @@ self.addEventListener('fetch', (event) => {
   // Only cache GET requests
   if (event.request.method !== 'GET') return;
 
-  // Don't cache API calls to GenAI (usually POST, but just in case)
   const url = new URL(event.request.url);
-  if (url.hostname.includes('googleapis')) return;
+  
+  // Don't cache API calls to GenAI or Google Analytics
+  if (url.hostname.includes('googleapis') || 
+      url.hostname.includes('google-analytics.com') || 
+      url.hostname.includes('googletagmanager.com')) {
+    return;
+  }
 
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {

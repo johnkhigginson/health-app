@@ -4,6 +4,7 @@ import { ArrowUp, ChevronLeft } from 'lucide-react';
 import { createCoachChatSession } from '../services/geminiService';
 import MicrophoneButton from '../components/MicrophoneButton';
 import { useAppState } from '../hooks/useAppState';
+import { logEvent } from '../services/analytics';
 
 export const CoachChat: React.FC = () => {
   const { state } = useAppState();
@@ -46,6 +47,7 @@ export const CoachChat: React.FC = () => {
     setInput('');
     setMessages(prev => [...prev, { role: 'user', text: userText }]);
     setIsProcessing(true);
+    logEvent('send_coach_message');
 
     try {
       const response = await chatRef.current.sendMessage({ message: userText });

@@ -5,6 +5,7 @@ import { Meal } from '../types';
 import { createMealChatSession } from '../services/geminiService';
 import MicrophoneButton from '../components/MicrophoneButton';
 import { EditMealModal } from '../components/EditMealModal';
+import { logEvent } from '../services/analytics';
 
 interface MealLoggerProps {
   onLogMeal: (meal: Meal) => void;
@@ -105,12 +106,20 @@ export const MealLogger: React.FC<MealLoggerProps> = ({ onLogMeal }) => {
   const handleQuickSave = () => {
     if (draftMeal) {
       onLogMeal(draftMeal);
+      logEvent('log_meal', { 
+        calories: draftMeal.calories,
+        method: 'quick'
+      });
       setRedirect(true);
     }
   };
 
   const handleReviewSave = (updatedMeal: Meal) => {
     onLogMeal(updatedMeal);
+    logEvent('log_meal', { 
+      calories: updatedMeal.calories,
+      method: 'review'
+    });
     setRedirect(true);
   };
 

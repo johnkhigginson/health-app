@@ -3,6 +3,7 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { ChevronLeft, ChevronRight, ChevronDown, ChevronUp } from 'lucide-react';
 import { WeightEntry } from '../types';
 import { Card } from '../components/ui/Card';
+import { logEvent } from '../services/analytics';
 
 const KG_TO_LBS = 2.20462;
 
@@ -29,6 +30,7 @@ export const WeightTracker: React.FC<WeightTrackerProps> = ({ history, onLogWeig
     if (w > 0) {
       // Input is in lbs, convert to kg for storage, pass selectedDate
       onLogWeight(w / KG_TO_LBS, selectedDate);
+      logEvent('log_weight', { unit: 'lbs' });
       setWeight('');
     }
   };

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Grade, DailyLog } from '../types';
 import { Card } from '../components/ui/Card';
 import { ChevronLeft, ChevronRight, ChevronDown, ChevronUp } from 'lucide-react';
+import { logEvent } from '../services/analytics';
 
 const GRADE_POINTS: Record<Grade, number> = { 'A': 4, 'B': 3, 'C': 2, 'D': 1, 'F': 0 };
 
@@ -68,6 +69,7 @@ export const WellbeingView: React.FC<WellbeingViewProps> = ({ logs, onLogGrade }
   const handleGradeSelect = (g: Grade) => {
     setSelectedGrade(g);
     onLogGrade(selectedDate, g);
+    logEvent('log_mood', { grade: g });
   };
 
   const changeDate = (days: number) => {

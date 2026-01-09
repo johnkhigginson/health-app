@@ -10,6 +10,13 @@ import { SettingsView } from './views/SettingsView';
 import { CoachChat } from './views/CoachChat';
 import { NavBar } from './components/NavBar';
 import { ActionMenu } from './components/ActionMenu';
+import { usePageTracking } from './services/analytics';
+
+// Component to handle page view tracking
+const PageTracker = () => {
+  usePageTracking();
+  return null;
+};
 
 const App: React.FC = () => {
   const { 
@@ -83,6 +90,7 @@ const App: React.FC = () => {
 
   return (
     <HashRouter>
+      <PageTracker />
       {/* 
         Layout Update: 
         - Mobile: Full width/height (100dvh)

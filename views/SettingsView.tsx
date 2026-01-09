@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Moon, Sun, Bell, Download, Mic, Play, Square, FileDown, FileUp, ChevronDown, ChevronUp, Share, Check } from 'lucide-react';
+import { Moon, Sun, Bell, Download, Mic, Play, Square, FileDown, FileUp, ChevronDown, ChevronUp, Share, Check, FileSpreadsheet } from 'lucide-react';
 import { AppState, UserProfile } from '../types';
 import { Card } from '../components/ui/Card';
 import { AVAILABLE_VOICES, generateSpeech } from '../services/geminiService';
@@ -74,13 +74,72 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ state, onUpdateProfi
     }
   };
 
-  const handleExport = () => {
+  const handleExportJSON = () => {
     const dataStr = JSON.stringify(state, null, 2);
     const blob = new Blob([dataStr], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
     link.download = `take-care-backup-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleExportCSV = () => {
+    // 1. Headers
+    const headers = ['Date', 'Time', 'Meal Name', 'Calories', 'Protein (g)', 'Carbs (g)', 'Fat (g)', 'Weight (lbs)', 'Mood'];
+    const rows = [headers.join(',')];
+
+    // 2. Sort dates (Ascending for time-series charts in Excel)
+    const sortedDates = Object.keys(state.logs).sort();
+
+    sortedDates.forEach(date => {
+      const log = state.logs[date];
+      // Store in kg, display in lbs
+      const weightLbs = log.weight ? (log.weight * 2.20462).toFixed(1) : '';
+      const mood = log.moodGrade || '';
+      
+      if (log.meals && log.meals.length > 0) {
+        log.meals.forEach(meal => {
+           const dateObj = new Date(meal.timestamp);
+           const time = dateObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', hour12: false});
+           // CSV Injection protection and quoting
+           const safeName = `"${(meal.name || '').replace(/"/g, '""')}"`;
+           rows.push([
+             date,
+             time,
+             safeName,
+             meal.calories,
+             meal.protein,
+             meal.carbs,
+             meal.fat,
+             weightLbs,
+             mood
+           ].join(','));
+        });
+      } else if (weightLbs || mood) {
+        // Entry with no meals but has weight/mood
+        rows.push([
+          date,
+          '',
+          '',
+          '',
+          '',
+          '',
+          '',
+          weightLbs,
+          mood
+        ].join(','));
+      }
+    });
+
+    const csvString = rows.join("\n");
+    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `take-care-data-${new Date().toISOString().split('T')[0]}.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -259,20 +318,29 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ state, onUpdateProfi
         {/* Data Backup */}
         <Card>
             <h3 className="font-semibold text-slate-800 dark:text-white mb-4">Data Backup</h3>
-            <div className="flex gap-3">
+            <div className="grid grid-cols-3 gap-3">
               <button 
-                 onClick={handleExport}
-                 className="flex-1 flex flex-col items-center gap-2 p-4 rounded-xl bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 transition"
+                 onClick={handleExportCSV}
+                 className="flex flex-col items-center gap-2 p-4 rounded-xl bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 transition"
+              >
+                 <FileSpreadsheet className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+                 <span className="text-xs font-medium text-slate-600 dark:text-slate-300 text-center">Export CSV</span>
+              </button>
+              
+              <button 
+                 onClick={handleExportJSON}
+                 className="flex flex-col items-center gap-2 p-4 rounded-xl bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 transition"
               >
                  <FileDown className="w-6 h-6 text-slate-600 dark:text-slate-300" />
-                 <span className="text-xs font-medium text-slate-600 dark:text-slate-300">Export JSON</span>
+                 <span className="text-xs font-medium text-slate-600 dark:text-slate-300 text-center">Backup JSON</span>
               </button>
+
               <button 
                  onClick={handleImportClick}
-                 className="flex-1 flex flex-col items-center gap-2 p-4 rounded-xl bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 transition"
+                 className="flex flex-col items-center gap-2 p-4 rounded-xl bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 transition"
               >
                  <FileUp className="w-6 h-6 text-slate-600 dark:text-slate-300" />
-                 <span className="text-xs font-medium text-slate-600 dark:text-slate-300">Import JSON</span>
+                 <span className="text-xs font-medium text-slate-600 dark:text-slate-300 text-center">Import JSON</span>
               </button>
               <input 
                  id="import-file" 

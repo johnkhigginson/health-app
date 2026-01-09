@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Activity, ChevronRight, ChevronLeft, Check } from 'lucide-react';
 import { UserProfile, DEFAULT_PROFILE } from '../types';
 import { Card } from './ui/Card';
+import { logEvent } from '../services/analytics';
 
 const KG_TO_LBS = 2.20462;
 
@@ -17,6 +18,7 @@ export const Onboarding: React.FC<{ onComplete: (profile: UserProfile) => void }
   const prevStep = () => setStep(s => s - 1);
   
   const finish = () => {
+    logEvent('complete_onboarding');
     onComplete({ ...formData, isOnboarded: true });
   };
 
