@@ -126,6 +126,52 @@ export const Dashboard: React.FC<DashboardProps> = ({ state, installPrompt, onIn
 
   return (
     <div className="pb-24 space-y-6">
+      
+      {/* Install Prompt Banner - High Priority */}
+      {showInstallBanner && (
+        <div className="bg-slate-900 dark:bg-emerald-900/40 text-white p-4 rounded-2xl shadow-xl flex flex-col gap-3 animate-fade-in-up border border-slate-800 dark:border-emerald-800/50">
+           <div className="flex items-center justify-between">
+             <div className="flex items-center gap-3">
+               <div className="p-2 bg-emerald-500 rounded-xl text-white shadow-lg shadow-emerald-500/20">
+                 <Download className="w-6 h-6" />
+               </div>
+               <div>
+                 <h3 className="font-bold text-base">Install App</h3>
+                 <p className="text-slate-300 text-xs">Faster, full-screen, works offline</p>
+               </div>
+             </div>
+             <button 
+               onClick={() => setDismissInstall(true)}
+               className="p-2 hover:bg-white/10 rounded-full transition"
+             >
+               <X className="w-4 h-4 text-slate-400" />
+             </button>
+           </div>
+           
+           {/* Dynamic Content based on Platform */}
+           {isIOS ? (
+             <div className="bg-white/5 rounded-xl p-3 text-xs leading-relaxed border border-white/5">
+               <p className="font-semibold mb-2 text-emerald-400">To install on iPhone/iPad:</p>
+               <div className="flex items-center gap-2 mb-1">
+                 <span className="w-5 h-5 flex items-center justify-center bg-white/10 rounded-full">1</span>
+                 <span>Tap the <strong>Share</strong> button <Share className="w-3 h-3 inline mx-1" /></span>
+               </div>
+               <div className="flex items-center gap-2">
+                 <span className="w-5 h-5 flex items-center justify-center bg-white/10 rounded-full">2</span>
+                 <span>Scroll down and tap <strong>"Add to Home Screen"</strong></span>
+               </div>
+             </div>
+           ) : (
+             <button 
+               onClick={onInstall} 
+               className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-3 rounded-xl text-sm font-bold shadow-lg shadow-emerald-900/20 transition flex items-center justify-center gap-2"
+             >
+               <Download className="w-4 h-4" /> Install Now
+             </button>
+           )}
+        </div>
+      )}
+
       <header className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Hello, {state.profile.name}</h1>
@@ -141,45 +187,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ state, installPrompt, onIn
           </Link>
         </div>
       </header>
-
-      {/* Install Prompt Banner */}
-      {showInstallBanner && (
-        <div className="bg-emerald-600 text-white p-4 rounded-2xl shadow-lg flex flex-col gap-3 animate-fade-in-up">
-           <div className="flex items-center justify-between">
-             <div className="flex items-center gap-3">
-               <div className="p-2 bg-white/20 rounded-lg">
-                 <Download className="w-6 h-6" />
-               </div>
-               <div>
-                 <h3 className="font-bold text-sm">Install App</h3>
-                 <p className="text-emerald-100 text-xs">Better experience, offline access</p>
-               </div>
-             </div>
-             <button 
-               onClick={() => setDismissInstall(true)}
-               className="p-2 hover:bg-emerald-700 rounded-lg transition"
-             >
-               <X className="w-4 h-4" />
-             </button>
-           </div>
-           
-           {/* Dynamic Content based on Platform */}
-           {isIOS ? (
-             <div className="bg-white/10 rounded-lg p-3 text-xs leading-relaxed">
-               <p className="font-semibold mb-1">To install on iOS:</p>
-               <div className="flex items-center gap-1">1. Tap the Share button <Share className="w-3 h-3" /></div>
-               <div>2. Scroll down and tap <strong>"Add to Home Screen"</strong></div>
-             </div>
-           ) : (
-             <button 
-               onClick={onInstall} 
-               className="w-full bg-white text-emerald-600 py-2 rounded-lg text-xs font-bold shadow-sm hover:bg-emerald-50 transition"
-             >
-               Install Now
-             </button>
-           )}
-        </div>
-      )}
 
       {/* Coach Card - Interactive */}
       <Card 
