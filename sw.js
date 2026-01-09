@@ -1,10 +1,10 @@
-const CACHE_NAME = 'take-care-v7';
+const CACHE_NAME = 'take-care-v8';
 const PRECACHE_ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
   '/logo.svg',
-  '/favicon.svg'
+  '/favicon.png'
 ];
 
 self.addEventListener('install', (event) => {
