@@ -1,9 +1,10 @@
-const CACHE_NAME = 'take-care-v2';
+const CACHE_NAME = 'take-care-v4';
 const urlsToCache = [
   '/',
   '/index.html',
   '/manifest.json',
   '/logo.svg',
+  '/favicon.svg',
   'https://cdn.tailwindcss.com'
 ];
 

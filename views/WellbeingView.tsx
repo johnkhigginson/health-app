@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Grade, DailyLog } from '../types';
 import { Card } from '../components/ui/Card';
+import { ChevronLeft, ChevronRight, ChevronDown, ChevronUp } from 'lucide-react';
 
 const GRADE_POINTS: Record<Grade, number> = { 'A': 4, 'B': 3, 'C': 2, 'D': 1, 'F': 0 };
 
@@ -52,6 +53,9 @@ interface WellbeingViewProps {
 export const WellbeingView: React.FC<WellbeingViewProps> = ({ logs, onLogGrade }) => {
   const [selectedDate, setSelectedDate] = useState(getLocalDate());
   const [selectedGrade, setSelectedGrade] = useState<Grade | null>(null);
+  
+  // State for collapsible months
+  const [expandedMonths, setExpandedMonths] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (logs[selectedDate]?.moodGrade) {
@@ -64,6 +68,16 @@ export const WellbeingView: React.FC<WellbeingViewProps> = ({ logs, onLogGrade }
   const handleGradeSelect = (g: Grade) => {
     setSelectedGrade(g);
     onLogGrade(selectedDate, g);
+  };
+
+  const changeDate = (days: number) => {
+    const current = new Date(selectedDate + 'T00:00:00'); // Force local time
+    current.setDate(current.getDate() + days);
+    
+    const year = current.getFullYear();
+    const month = String(current.getMonth() + 1).padStart(2, '0');
+    const day = String(current.getDate()).padStart(2, '0');
+    setSelectedDate(`${year}-${month}-${day}`);
   };
 
   const calculateStats = useMemo(() => {
@@ -83,7 +97,6 @@ export const WellbeingView: React.FC<WellbeingViewProps> = ({ logs, onLogGrade }
     const yearGrades: Grade[] = [];
 
     allLogs.forEach(log => {
-      // Append T00:00:00 to force local time parsing for date strings
       const logDate = new Date(log.date + 'T00:00:00');
       if (log.moodGrade) {
         if (isSameWeek(logDate)) weekGrades.push(log.moodGrade);
@@ -99,6 +112,37 @@ export const WellbeingView: React.FC<WellbeingViewProps> = ({ logs, onLogGrade }
     };
   }, [logs]);
 
+  // Group logs by month
+  const groupedLogs = useMemo(() => {
+    const allLogs = (Object.values(logs) as DailyLog[])
+      .filter(l => l.moodGrade)
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+    const groups: Record<string, DailyLog[]> = {};
+    
+    allLogs.forEach(log => {
+      const date = new Date(log.date + 'T00:00:00');
+      const monthYear = date.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+      if (!groups[monthYear]) groups[monthYear] = [];
+      groups[monthYear].push(log);
+    });
+
+    return groups;
+  }, [logs]);
+
+  // Toggle month expansion
+  const toggleMonth = (month: string) => {
+    setExpandedMonths(prev => ({ ...prev, [month]: !prev[month] }));
+  };
+
+  // Initialize first group as expanded if nothing is set yet
+  useEffect(() => {
+    const months = Object.keys(groupedLogs);
+    if (months.length > 0 && Object.keys(expandedMonths).length === 0) {
+      setExpandedMonths({ [months[0]]: true });
+    }
+  }, [groupedLogs]);
+
   return (
      <div className="pb-24 space-y-6">
       <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Mental Wellbeing</h1>
@@ -107,13 +151,24 @@ export const WellbeingView: React.FC<WellbeingViewProps> = ({ logs, onLogGrade }
       <Card>
         <div className="flex items-center justify-between mb-4">
            <label className="text-sm font-medium text-slate-700 dark:text-slate-300">How do you feel?</label>
-           <div className="relative">
-             <input 
-               type="date" 
-               value={selectedDate}
-               onChange={(e) => setSelectedDate(e.target.value)}
-               className="bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 text-sm py-1 px-3 rounded-lg outline-none focus:ring-2 focus:ring-emerald-500 border-none"
-             />
+           
+           {/* Date Navigation */}
+           <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-700 rounded-lg p-1">
+             <button onClick={() => changeDate(-1)} className="p-1 hover:bg-slate-200 dark:hover:bg-slate-600 rounded">
+               <ChevronLeft className="w-4 h-4 text-slate-600 dark:text-slate-300" />
+             </button>
+             <div className="relative">
+                <input 
+                  type="date" 
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className="bg-transparent text-slate-700 dark:text-slate-200 text-sm font-medium outline-none border-none text-center w-28 appearance-none"
+                  style={{ colorScheme: 'light dark' }}
+                />
+             </div>
+             <button onClick={() => changeDate(1)} className="p-1 hover:bg-slate-200 dark:hover:bg-slate-600 rounded">
+               <ChevronRight className="w-4 h-4 text-slate-600 dark:text-slate-300" />
+             </button>
            </div>
         </div>
         <div className="grid grid-cols-5 gap-2">
@@ -155,39 +210,59 @@ export const WellbeingView: React.FC<WellbeingViewProps> = ({ logs, onLogGrade }
          </div>
       </div>
 
-      {/* History List */}
-      <div className="space-y-3">
-        <h3 className="font-bold text-slate-800 dark:text-white px-1">Recent Logs</h3>
-        {(Object.values(logs) as DailyLog[])
-          .filter(l => l.moodGrade)
-          .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-          .slice(0, 10) // Show last 10
-          .map((log) => (
-          <div key={log.date} className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 flex justify-between items-center transition-colors">
-            <div className="flex items-center gap-3">
-               <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm ${getGradeColor(log.moodGrade)}`}>
-                 {log.moodGrade}
-               </div>
-               <span className="text-slate-600 dark:text-slate-300 font-medium">
-                 {/* Appending T00:00:00 ensures string is parsed as local time, preventing UTC shift to previous day */}
-                 {new Date(log.date + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
-               </span>
-            </div>
-            <button 
-              onClick={() => setSelectedDate(log.date)}
-              className="text-xs text-slate-400 hover:text-emerald-500"
-            >
-              Edit
-            </button>
-          </div>
-        ))}
-        {(Object.values(logs) as DailyLog[]).filter(l => l.moodGrade).length === 0 && (
+      {/* History List - Grouped by Month */}
+      <div className="space-y-4">
+        <h3 className="font-bold text-slate-800 dark:text-white px-1">History</h3>
+        
+        {Object.keys(groupedLogs).length === 0 && (
            <div className="text-center py-8 text-slate-400 dark:text-slate-500">
              No mood grades logged yet.
            </div>
         )}
-      </div>
 
+        {Object.entries(groupedLogs).map(([month, monthLogs]) => (
+          <div key={month} className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 overflow-hidden">
+            <button 
+              onClick={() => toggleMonth(month)}
+              className="w-full flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            >
+              <span className="font-semibold text-slate-700 dark:text-slate-200">{month}</span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-slate-500 bg-white dark:bg-slate-700 px-2 py-1 rounded-full">{monthLogs.length} logs</span>
+                {expandedMonths[month] ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+              </div>
+            </button>
+            
+            {expandedMonths[month] && (
+              <div className="divide-y divide-slate-100 dark:divide-slate-700/50">
+                {monthLogs.map((log) => (
+                  <div key={log.date} className="p-4 flex justify-between items-center hover:bg-slate-50 dark:hover:bg-slate-700/20 transition-colors">
+                    <div className="flex items-center gap-3">
+                       <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm ${getGradeColor(log.moodGrade)}`}>
+                         {log.moodGrade}
+                       </div>
+                       <div className="flex flex-col">
+                         <span className="text-slate-700 dark:text-slate-300 font-medium">
+                           {new Date(log.date + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'long' })}
+                         </span>
+                         <span className="text-xs text-slate-400">
+                           {new Date(log.date + 'T00:00:00').toLocaleDateString(undefined, { day: 'numeric' })}
+                         </span>
+                       </div>
+                    </div>
+                    <button 
+                      onClick={() => setSelectedDate(log.date)}
+                      className="text-xs text-slate-400 hover:text-emerald-500 px-3 py-1 rounded-full border border-slate-200 dark:border-slate-600 hover:border-emerald-500"
+                    >
+                      Edit
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
      </div>
   );
 };

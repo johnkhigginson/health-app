@@ -48,11 +48,6 @@ export const MealLogger: React.FC<MealLoggerProps> = ({ onLogMeal }) => {
     if (!isNaN(hours) && !isNaN(minutes)) {
       const mealTime = new Date(now);
       mealTime.setHours(hours, minutes, 0, 0);
-      
-      // If inferred time is in the future (e.g., input "8am" at 7am, unlikely but possible context mismatch), 
-      // assume yesterday? For now, just trust the day is today as per prompt context, 
-      // or simplistic handling: if time > now + 2 hours, maybe it was yesterday? 
-      // Let's stick to today to be safe unless complex NLP logic is added.
       return mealTime.toISOString();
     }
     return now.toISOString();
@@ -78,10 +73,8 @@ export const MealLogger: React.FC<MealLoggerProps> = ({ onLogMeal }) => {
         }
 
         if (parsed.mealData) {
-           // Calculate timestamp
            const timestamp = parseTime(parsed.mealData.time);
 
-           // Create a full meal object from the AI partial data
            const aiMeal: Meal = {
              id: Date.now().toString(),
              timestamp: timestamp,
@@ -124,7 +117,6 @@ export const MealLogger: React.FC<MealLoggerProps> = ({ onLogMeal }) => {
   if (redirect) return <Navigate to="/" />;
 
   return (
-    // Updated container height to fit mobile viewport dynamically
     <div className="flex flex-col h-[calc(100dvh-100px)] relative">
       <div className="flex-none p-4 pb-0">
         <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Food Logger</h1>
@@ -162,7 +154,7 @@ export const MealLogger: React.FC<MealLoggerProps> = ({ onLogMeal }) => {
       {/* Input or Draft Panel */}
       <div className="absolute bottom-0 left-0 right-0 p-4 pt-2 bg-slate-50 dark:bg-slate-900 transition-transform duration-300 pb-safe-0">
         
-        {/* Draft Panel - Slides up/replaces input when meal detected */}
+        {/* Draft Panel */}
         {draftMeal ? (
           <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-[0_-8px_30px_rgba(0,0,0,0.12)] border border-slate-100 dark:border-slate-700 p-5 animate-fade-in-up">
               <div className="flex justify-between items-start mb-4">
@@ -214,9 +206,9 @@ export const MealLogger: React.FC<MealLoggerProps> = ({ onLogMeal }) => {
               </div>
           </div>
         ) : (
-          /* Normal Chat Input */
-          <div className="flex items-end gap-2 relative pb-safe">
-            <div className="flex-1 bg-white dark:bg-slate-800 rounded-[1.5rem] border border-slate-200 dark:border-slate-700 shadow-sm flex items-center p-1.5 focus-within:ring-2 focus-within:ring-emerald-500 transition-all">
+          /* UNIFIED INPUT UI */
+          <div className="pb-safe">
+            <div className="flex items-end gap-2 bg-white dark:bg-slate-800 p-2 rounded-[2rem] shadow-lg border border-slate-200 dark:border-slate-700">
               <textarea
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
@@ -227,20 +219,24 @@ export const MealLogger: React.FC<MealLoggerProps> = ({ onLogMeal }) => {
                   }
                 }}
                 placeholder="Log your food..."
-                className="w-full bg-transparent border-none focus:ring-0 resize-none p-3 h-11 max-h-32 text-slate-800 dark:text-white placeholder:text-slate-400"
+                className="flex-1 bg-transparent border-none focus:ring-0 resize-none py-3 px-4 max-h-32 text-slate-800 dark:text-white placeholder:text-slate-400 leading-relaxed"
+                style={{ minHeight: '48px' }}
                 rows={1}
               />
-              <div className="p-0.5">
-                 <MicrophoneButton onTranscript={(text) => setInput(prev => prev + (prev ? ' ' : '') + text)} isProcessing={isProcessing} />
+              
+              <div className="flex items-center gap-1 pb-1 pr-1">
+                 <div className="scale-90">
+                    <MicrophoneButton onTranscript={(text) => setInput(prev => prev + (prev ? ' ' : '') + text)} isProcessing={isProcessing} />
+                 </div>
+                 <button 
+                   onClick={handleSend}
+                   disabled={!input.trim() || isProcessing}
+                   className="p-3 bg-emerald-600 disabled:opacity-50 disabled:bg-slate-300 dark:disabled:bg-slate-700 text-white rounded-full shadow-md hover:bg-emerald-700 transition flex items-center justify-center"
+                 >
+                   <ArrowUp className="w-5 h-5" />
+                 </button>
               </div>
             </div>
-            <button 
-              onClick={handleSend}
-              disabled={!input.trim() || isProcessing}
-              className="p-3 bg-emerald-600 disabled:opacity-50 disabled:bg-slate-300 dark:disabled:bg-slate-700 text-white rounded-full shadow-md hover:bg-emerald-700 transition"
-            >
-              <ArrowUp className="w-6 h-6" />
-            </button>
           </div>
         )}
       </div>

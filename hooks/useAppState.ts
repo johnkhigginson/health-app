@@ -132,24 +132,33 @@ export const useAppState = () => {
     });
   };
 
-  const logWeight = (weight: number) => {
-    const today = new Date().toISOString().split('T')[0];
+  const logWeight = (weight: number, dateStr?: string) => {
+    // Use provided date or default to today
+    const dateKey = dateStr || new Date().toISOString().split('T')[0];
+
     setState(prev => {
-      const existingLog = prev.logs[today] || { date: today, meals: [] };
+      const existingLog = prev.logs[dateKey] || { date: dateKey, meals: [] };
       const updatedLog = { ...existingLog, weight };
       
-      const existingEntryIndex = prev.weightHistory.findIndex(w => w.date === today);
+      const existingEntryIndex = prev.weightHistory.findIndex(w => w.date === dateKey);
       let newHistory = [...prev.weightHistory];
       if (existingEntryIndex >= 0) {
-        newHistory[existingEntryIndex] = { date: today, weight };
+        newHistory[existingEntryIndex] = { date: dateKey, weight };
       } else {
-        newHistory.push({ date: today, weight });
+        newHistory.push({ date: dateKey, weight });
       }
+      
+      // Sort history by date to ensure charts look correct
+      newHistory.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+      // Only update current weight if the log is for today or newer than current
+      const isNewest = newHistory[newHistory.length - 1].date === dateKey;
+      const newCurrentWeight = isNewest ? weight : prev.profile.currentWeight;
 
       return {
         ...prev,
-        profile: { ...prev.profile, currentWeight: weight },
-        logs: { ...prev.logs, [today]: updatedLog },
+        profile: { ...prev.profile, currentWeight: newCurrentWeight },
+        logs: { ...prev.logs, [dateKey]: updatedLog },
         weightHistory: newHistory
       };
     });

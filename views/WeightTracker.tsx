@@ -1,5 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { ChevronLeft, ChevronRight, ChevronDown, ChevronUp } from 'lucide-react';
 import { WeightEntry } from '../types';
 import { Card } from '../components/ui/Card';
 
@@ -7,19 +8,39 @@ const KG_TO_LBS = 2.20462;
 
 interface WeightTrackerProps {
   history: WeightEntry[];
-  onLogWeight: (w: number) => void;
+  onLogWeight: (w: number, date?: string) => void;
 }
+
+const getLocalDate = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
 
 export const WeightTracker: React.FC<WeightTrackerProps> = ({ history, onLogWeight }) => {
   const [weight, setWeight] = useState('');
+  const [selectedDate, setSelectedDate] = useState(getLocalDate());
+  const [expandedMonths, setExpandedMonths] = useState<Record<string, boolean>>({});
   
   const handleSave = () => {
     const w = parseFloat(weight);
     if (w > 0) {
-      // Input is in lbs, convert to kg for storage
-      onLogWeight(w / KG_TO_LBS);
+      // Input is in lbs, convert to kg for storage, pass selectedDate
+      onLogWeight(w / KG_TO_LBS, selectedDate);
       setWeight('');
     }
+  };
+
+  const changeDate = (days: number) => {
+    const current = new Date(selectedDate + 'T00:00:00'); // Force local time
+    current.setDate(current.getDate() + days);
+    
+    const year = current.getFullYear();
+    const month = String(current.getMonth() + 1).padStart(2, '0');
+    const day = String(current.getDate()).padStart(2, '0');
+    setSelectedDate(`${year}-${month}-${day}`);
   };
 
   const chartData = useMemo(() => {
@@ -32,17 +53,77 @@ export const WeightTracker: React.FC<WeightTrackerProps> = ({ history, onLogWeig
     }));
   }, [history]);
 
+  // Group logs by month
+  const groupedHistory = useMemo(() => {
+    const allEntries = [...history]
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+    const groups: Record<string, WeightEntry[]> = {};
+    
+    allEntries.forEach(entry => {
+      const date = new Date(entry.date + 'T00:00:00');
+      const monthYear = date.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+      if (!groups[monthYear]) groups[monthYear] = [];
+      groups[monthYear].push(entry);
+    });
+
+    return groups;
+  }, [history]);
+
+   // Toggle month expansion
+  const toggleMonth = (month: string) => {
+    setExpandedMonths(prev => ({ ...prev, [month]: !prev[month] }));
+  };
+
+  // Initialize first group as expanded if nothing is set yet
+  useEffect(() => {
+    const months = Object.keys(groupedHistory);
+    if (months.length > 0 && Object.keys(expandedMonths).length === 0) {
+      setExpandedMonths({ [months[0]]: true });
+    }
+  }, [groupedHistory]);
+
+  // Check if selected date has a weight already
+  const existingWeightForDate = useMemo(() => {
+    const entry = history.find(h => h.date === selectedDate);
+    return entry ? Math.round(entry.weight * KG_TO_LBS) : null;
+  }, [selectedDate, history]);
+
   return (
     <div className="pb-24 space-y-6">
       <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Weight Tracker</h1>
 
       <Card>
-        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Log today's weight</label>
+        <div className="flex justify-between items-center mb-3">
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+            Log weight for {existingWeightForDate ? '(Update)' : ''}
+          </label>
+           
+           {/* Date Navigation */}
+           <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-700 rounded-lg p-1">
+             <button onClick={() => changeDate(-1)} className="p-1 hover:bg-slate-200 dark:hover:bg-slate-600 rounded">
+               <ChevronLeft className="w-4 h-4 text-slate-600 dark:text-slate-300" />
+             </button>
+             <div className="relative">
+                <input 
+                  type="date" 
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className="bg-transparent text-slate-700 dark:text-slate-200 text-sm font-medium outline-none border-none text-center w-28 appearance-none"
+                  style={{ colorScheme: 'light dark' }}
+                />
+             </div>
+             <button onClick={() => changeDate(1)} className="p-1 hover:bg-slate-200 dark:hover:bg-slate-600 rounded">
+               <ChevronRight className="w-4 h-4 text-slate-600 dark:text-slate-300" />
+             </button>
+           </div>
+        </div>
+
         <div className="flex gap-4">
           <input 
             type="number" 
             className="flex-1 p-3 bg-white text-slate-900 border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
-            placeholder="lbs"
+            placeholder={existingWeightForDate ? `${existingWeightForDate} lbs` : "lbs"}
             value={weight}
             onChange={(e) => setWeight(e.target.value)}
           />
@@ -86,15 +167,42 @@ export const WeightTracker: React.FC<WeightTrackerProps> = ({ history, onLogWeig
         </Card>
       )}
 
-      <div className="space-y-3">
+      {/* History List - Grouped by Month */}
+      <div className="space-y-4">
         <h3 className="font-bold text-slate-800 dark:text-white px-1">History</h3>
-        {[...history].reverse().slice(0, 5).map((entry, idx) => (
-          <div key={idx} className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 flex justify-between items-center transition-colors">
-            <span className="text-slate-600 dark:text-slate-300">
-              {/* Parse date locally to avoid timezone shift */}
-              {new Date(entry.date + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
-            </span>
-            <span className="font-bold text-slate-800 dark:text-white">{Math.round(entry.weight * KG_TO_LBS)} lbs</span>
+        
+        {Object.entries(groupedHistory).map(([month, monthLogs]) => (
+          <div key={month} className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 overflow-hidden">
+            <button 
+              onClick={() => toggleMonth(month)}
+              className="w-full flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            >
+              <span className="font-semibold text-slate-700 dark:text-slate-200">{month}</span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-slate-500 bg-white dark:bg-slate-700 px-2 py-1 rounded-full">{monthLogs.length} entries</span>
+                {expandedMonths[month] ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+              </div>
+            </button>
+            
+            {expandedMonths[month] && (
+              <div className="divide-y divide-slate-100 dark:divide-slate-700/50">
+                {monthLogs.map((entry, idx) => (
+                  <button 
+                    key={idx} 
+                    onClick={() => {
+                        setSelectedDate(entry.date);
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }}
+                    className="w-full p-4 flex justify-between items-center hover:bg-slate-50 dark:hover:bg-slate-700/20 transition-colors"
+                  >
+                    <span className="text-slate-600 dark:text-slate-300">
+                      {new Date(entry.date + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'long', day: 'numeric' })}
+                    </span>
+                    <span className="font-bold text-slate-800 dark:text-white">{Math.round(entry.weight * KG_TO_LBS)} lbs</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         ))}
       </div>

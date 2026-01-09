@@ -39,9 +39,18 @@ const App: React.FC = () => {
     const standalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true;
     setIsStandalone(standalone);
 
+    // Check for deferred prompt captured in index.tsx
+    // @ts-ignore
+    if (window.deferredPrompt) {
+      // @ts-ignore
+      setInstallPrompt(window.deferredPrompt);
+    }
+
     const handler = (e: any) => {
       e.preventDefault();
       setInstallPrompt(e);
+      // @ts-ignore
+      window.deferredPrompt = e;
     };
     window.addEventListener('beforeinstallprompt', handler);
     return () => window.removeEventListener('beforeinstallprompt', handler);
@@ -53,6 +62,8 @@ const App: React.FC = () => {
     installPrompt.userChoice.then((choiceResult: any) => {
       if (choiceResult.outcome === 'accepted') {
         setInstallPrompt(null);
+        // @ts-ignore
+        window.deferredPrompt = null;
       }
     });
   };
