@@ -1,46 +1,59 @@
-const CACHE_NAME = 'take-care-v4';
-const urlsToCache = [
+const CACHE_NAME = 'take-care-v6';
+const ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
   '/logo.svg',
-  '/favicon.svg',
-  'https://cdn.tailwindcss.com'
+  '/favicon.svg'
 ];
 
 self.addEventListener('install', (event) => {
+  self.skipWaiting();
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then((cache) => {
-        return cache.addAll(urlsToCache);
-      })
+    caches.open(CACHE_NAME).then(async (cache) => {
+      // Try to cache external resources (Tailwind) separately
+      // Using catch prevents the entire install from failing if offline
+      try {
+        await cache.add('https://cdn.tailwindcss.com');
+      } catch (e) {
+        console.warn('Tailwind CDN caching failed (offline?)', e);
+      }
+
+      // Cache local assets individually.
+      // This ensures that if one file is missing (e.g. / vs /index.html issues),
+      // the Service Worker STILL installs successfully.
+      const cachePromises = ASSETS.map(url => {
+        return cache.add(url).catch(err => {
+           console.warn(`Failed to cache ${url}:`, err);
+        });
+      });
+      
+      await Promise.all(cachePromises);
+    })
   );
 });
 
 self.addEventListener('fetch', (event) => {
   event.respondWith(
-    caches.match(event.request)
-      .then((response) => {
-        // Cache hit - return response
-        if (response) {
-          return response;
-        }
-        return fetch(event.request);
-      })
+    caches.match(event.request).then((response) => {
+      return response || fetch(event.request);
+    })
   );
 });
 
 self.addEventListener('activate', (event) => {
-  const cacheWhitelist = [CACHE_NAME];
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames.map((cacheName) => {
-          if (cacheWhitelist.indexOf(cacheName) === -1) {
-            return caches.delete(cacheName);
-          }
-        })
-      );
-    })
+    Promise.all([
+      self.clients.claim(),
+      caches.keys().then((keys) => {
+        return Promise.all(
+          keys.map((key) => {
+            if (key !== CACHE_NAME) {
+              return caches.delete(key);
+            }
+          })
+        );
+      })
+    ])
   );
 });

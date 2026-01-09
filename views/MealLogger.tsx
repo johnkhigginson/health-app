@@ -208,7 +208,7 @@ export const MealLogger: React.FC<MealLoggerProps> = ({ onLogMeal }) => {
         ) : (
           /* UNIFIED INPUT UI */
           <div className="pb-safe">
-            <div className="flex items-end gap-2 bg-white dark:bg-slate-800 p-2 rounded-[2rem] shadow-lg border border-slate-200 dark:border-slate-700">
+            <div className="flex items-end gap-2 bg-white dark:bg-slate-800 p-2 rounded-[2rem] shadow-lg border border-slate-200 dark:border-slate-700 min-h-[4rem]">
               <textarea
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
@@ -219,19 +219,19 @@ export const MealLogger: React.FC<MealLoggerProps> = ({ onLogMeal }) => {
                   }
                 }}
                 placeholder="Log your food..."
-                className="flex-1 bg-transparent border-none focus:ring-0 resize-none py-3 px-4 max-h-32 text-slate-800 dark:text-white placeholder:text-slate-400 leading-relaxed"
-                style={{ minHeight: '48px' }}
+                className="flex-1 bg-transparent border-none focus:ring-0 resize-none py-3 px-4 text-slate-800 dark:text-white placeholder:text-slate-400 leading-relaxed self-center"
+                style={{ minHeight: '48px', maxHeight: '120px' }}
                 rows={1}
               />
               
-              <div className="flex items-center gap-1 pb-1 pr-1">
+              <div className="flex items-center gap-1 pb-1 pr-1 h-12 self-end">
                  <div className="scale-90">
                     <MicrophoneButton onTranscript={(text) => setInput(prev => prev + (prev ? ' ' : '') + text)} isProcessing={isProcessing} />
                  </div>
                  <button 
                    onClick={handleSend}
                    disabled={!input.trim() || isProcessing}
-                   className="p-3 bg-emerald-600 disabled:opacity-50 disabled:bg-slate-300 dark:disabled:bg-slate-700 text-white rounded-full shadow-md hover:bg-emerald-700 transition flex items-center justify-center"
+                   className="w-11 h-11 bg-emerald-600 disabled:opacity-50 disabled:bg-slate-300 dark:disabled:bg-slate-700 text-white rounded-full shadow-md hover:bg-emerald-700 transition flex items-center justify-center"
                  >
                    <ArrowUp className="w-5 h-5" />
                  </button>

@@ -11,7 +11,7 @@ export const ActionMenu: React.FC<ActionMenuProps> = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-end justify-center sm:items-center">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
       {/* Backdrop */}
       <div 
         className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm transition-opacity" 
@@ -19,7 +19,7 @@ export const ActionMenu: React.FC<ActionMenuProps> = ({ isOpen, onClose }) => {
       />
       
       {/* Menu */}
-      <div className="relative w-full max-w-md bg-white dark:bg-slate-800 rounded-t-3xl sm:rounded-3xl p-6 shadow-2xl animate-fade-in-up border-t border-slate-100 dark:border-slate-700">
+      <div className="relative w-full max-w-md bg-white dark:bg-slate-800 rounded-3xl p-6 shadow-2xl animate-fade-in-up border border-slate-100 dark:border-slate-700">
         <div className="flex justify-between items-center mb-6">
           <h3 className="text-lg font-bold text-slate-800 dark:text-white">Quick Log</h3>
           <button onClick={onClose} className="p-2 bg-slate-100 dark:bg-slate-700 rounded-full text-slate-500">
