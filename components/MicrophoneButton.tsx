@@ -41,6 +41,9 @@ const MicrophoneButton: React.FC<MicrophoneButtonProps> = ({ onTranscript, isPro
     if (isListening) {
       recognition.stop();
     } else {
+      if (typeof navigator !== 'undefined' && navigator.vibrate) {
+        navigator.vibrate(50);
+      }
       recognition.start();
     }
   };

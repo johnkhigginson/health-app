@@ -59,9 +59,14 @@ const calculateAge = (birthDate: string): number => {
 };
 
 export const calculateTargets = (profile: UserProfile) => {
+  // Use AI-generated macros if they exist
+  if (profile.macros) {
+    return profile.macros;
+  }
+
+  // Fallback: Mifflin-St Jeor Equation
   const age = calculateAge(profile.birthDate);
 
-  // Mifflin-St Jeor Equation
   let bmr = 10 * profile.currentWeight + 6.25 * profile.height - 5 * age;
   if (profile.gender === 'male') bmr += 5;
   else if (profile.gender === 'female') bmr -= 161;
@@ -93,6 +98,56 @@ export const calculateTargets = (profile: UserProfile) => {
     carbs: Math.round((targetCalories * 0.4) / 4), // 40% of cals
     fat: Math.round((targetCalories * 0.3) / 9),   // 30% of cals
   };
+};
+
+// --- Diet Plan Generation ---
+
+export const generateDietPlan = async (profile: UserProfile) => {
+  if (!apiKey) return null;
+
+  const age = calculateAge(profile.birthDate);
+  const prompt = `
+    Act as a professional nutritionist. Calculate the daily target Calories, Protein (g), Carbs (g), and Fat (g) for this user to reach their goal.
+    
+    User Profile:
+    - Age: ${age}
+    - Gender: ${profile.gender}
+    - Height: ${profile.height} cm
+    - Current Weight: ${profile.currentWeight} kg
+    - Target Weight: ${profile.targetWeight} kg
+    - Activity Level: ${profile.activityLevel}
+    - Dietary Preferences: ${profile.dietaryPreferences || "None"}
+    
+    Consider their TDEE and safe weight loss/gain rates. Adjust macros based on preferences (e.g. higher fat for Keto if mentioned).
+  `;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            calories: { type: Type.INTEGER },
+            protein: { type: Type.INTEGER },
+            carbs: { type: Type.INTEGER },
+            fat: { type: Type.INTEGER },
+          },
+          required: ["calories", "protein", "carbs", "fat"],
+        },
+      },
+    });
+
+    if (response.text) {
+      return JSON.parse(response.text);
+    }
+    return null;
+  } catch (e) {
+    console.error("Failed to generate diet plan", e);
+    return null;
+  }
 };
 
 // --- Chat Sessions ---
@@ -154,6 +209,7 @@ export const createCoachChatSession = (profile: UserProfile) => {
       User Context:
       - Name: ${profile.name}
       - Goal: ${currentLbs} lbs to ${targetLbs} lbs
+      - Dietary Prefs: ${profile.dietaryPreferences}
       
       Your Role:
       1. Discuss the user's daily insights, mood, and diet progress.

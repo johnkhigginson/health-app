@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Activity, ChevronRight, ChevronLeft, Check } from 'lucide-react';
+import { Activity, ChevronRight, ChevronLeft, Check, Loader2 } from 'lucide-react';
 import { UserProfile, DEFAULT_PROFILE } from '../types';
 import { Card } from './ui/Card';
 import { logEvent } from '../services/analytics';
+import { generateDietPlan } from '../services/geminiService';
 
 const KG_TO_LBS = 2.20462;
 
 export const Onboarding: React.FC<{ onComplete: (profile: UserProfile) => void }> = ({ onComplete }) => {
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState<UserProfile>(DEFAULT_PROFILE);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const handleChange = (field: keyof UserProfile, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -17,15 +19,41 @@ export const Onboarding: React.FC<{ onComplete: (profile: UserProfile) => void }
   const nextStep = () => setStep(s => s + 1);
   const prevStep = () => setStep(s => s - 1);
   
-  const finish = () => {
+  const finish = async () => {
+    setIsGenerating(true);
+    let finalProfile = { ...formData, isOnboarded: true };
+    
+    // Generate AI Diet Plan
+    const plan = await generateDietPlan(formData);
+    if (plan) {
+      finalProfile.macros = plan;
+    }
+
     logEvent('complete_onboarding');
-    onComplete({ ...formData, isOnboarded: true });
+    setIsGenerating(false);
+    onComplete(finalProfile);
   };
 
   useEffect(() => {
     if (formData.theme === 'dark') document.documentElement.classList.add('dark');
     else document.documentElement.classList.remove('dark');
   }, [formData.theme]);
+
+  if (isGenerating) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center p-4">
+        <div className="text-center space-y-4">
+          <div className="bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 w-16 h-16 rounded-full flex items-center justify-center mx-auto animate-pulse">
+            <Activity className="w-8 h-8" />
+          </div>
+          <h2 className="text-xl font-bold text-slate-800 dark:text-white">Designing your plan...</h2>
+          <p className="text-slate-500 dark:text-slate-400 max-w-xs mx-auto">
+            Our AI is calculating your optimal nutrition targets based on your profile and goals.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center p-4 transition-colors duration-300">

@@ -14,6 +14,12 @@ export interface UserProfile {
     enabled: boolean;
     time: string; // HH:MM format
   };
+  macros?: {
+    calories: number;
+    protein: number;
+    carbs: number;
+    fat: number;
+  };
 }
 
 export interface Meal {

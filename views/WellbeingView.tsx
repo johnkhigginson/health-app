@@ -154,29 +154,31 @@ export const WellbeingView: React.FC<WellbeingViewProps> = ({ logs, onLogGrade }
         <div className="flex flex-col gap-4 mb-4">
            <label className="text-base font-semibold text-slate-800 dark:text-slate-200">How do you feel?</label>
            
-           {/* Prominent Date Navigation */}
-           <div className="flex items-center justify-between bg-slate-100 dark:bg-slate-700/50 rounded-xl p-1">
+           {/* Prominent Date Navigation - Fixed width buttons ensure perfect centering */}
+           <div className="flex items-center bg-slate-100 dark:bg-slate-700/50 rounded-xl p-1">
              <button 
                 onClick={() => changeDate(-1)} 
-                className="p-3 hover:bg-white dark:hover:bg-slate-600 rounded-lg transition-all active:scale-95 text-slate-500 dark:text-slate-400"
+                className="w-12 h-12 flex items-center justify-center hover:bg-white dark:hover:bg-slate-600 rounded-lg transition-all active:scale-95 text-slate-500 dark:text-slate-400 z-20"
              >
                <ChevronLeft className="w-6 h-6" />
              </button>
-             <div className="text-center">
+             <div className="flex-1 relative flex flex-col items-center justify-center h-12">
                 <input 
                   type="date" 
                   value={selectedDate}
                   onChange={(e) => setSelectedDate(e.target.value)}
-                  className="bg-transparent text-slate-800 dark:text-white text-lg font-bold outline-none border-none text-center w-36 appearance-none cursor-pointer"
-                  style={{ colorScheme: 'light dark' }}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                 />
-                <div className="text-xs text-slate-400 font-medium -mt-1 pointer-events-none">
+                <div className="text-lg font-bold text-slate-800 dark:text-white leading-none">
+                   {new Date(selectedDate + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                </div>
+                <div className="text-xs text-slate-400 font-medium leading-none mt-1">
                   {new Date(selectedDate + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'long' })}
                 </div>
              </div>
              <button 
                onClick={() => changeDate(1)} 
-               className="p-3 hover:bg-white dark:hover:bg-slate-600 rounded-lg transition-all active:scale-95 text-slate-500 dark:text-slate-400"
+               className="w-12 h-12 flex items-center justify-center hover:bg-white dark:hover:bg-slate-600 rounded-lg transition-all active:scale-95 text-slate-500 dark:text-slate-400 z-20"
              >
                <ChevronRight className="w-6 h-6" />
              </button>

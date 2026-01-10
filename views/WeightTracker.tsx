@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { ChevronLeft, ChevronRight, ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronDown, ChevronUp, TrendingDown, TrendingUp, Minus } from 'lucide-react';
 import { WeightEntry } from '../types';
 import { Card } from '../components/ui/Card';
 import { logEvent } from '../services/analytics';
@@ -55,12 +55,26 @@ export const WeightTracker: React.FC<WeightTrackerProps> = ({ history, onLogWeig
     }));
   }, [history]);
 
+  // Calculate history with diffs
+  const historyWithDiffs = useMemo(() => {
+    // Sort ascending first to calculate diffs correctly
+    const sorted = [...history].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    
+    return sorted.map((entry, index) => {
+       let diff = 0;
+       if (index > 0) {
+         diff = (entry.weight - sorted[index-1].weight) * KG_TO_LBS;
+       }
+       return { ...entry, diff };
+    });
+  }, [history]);
+
   // Group logs by month
   const groupedHistory = useMemo(() => {
-    const allEntries = [...history]
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    const allEntries = [...historyWithDiffs]
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()); // Sort descending for display
 
-    const groups: Record<string, WeightEntry[]> = {};
+    const groups: Record<string, typeof historyWithDiffs> = {};
     
     allEntries.forEach(entry => {
       const date = new Date(entry.date + 'T00:00:00');
@@ -70,7 +84,7 @@ export const WeightTracker: React.FC<WeightTrackerProps> = ({ history, onLogWeig
     });
 
     return groups;
-  }, [history]);
+  }, [historyWithDiffs]);
 
    // Toggle month expansion
   const toggleMonth = (month: string) => {
@@ -108,31 +122,33 @@ export const WeightTracker: React.FC<WeightTrackerProps> = ({ history, onLogWeig
             )}
           </div>
            
-           {/* Prominent Date Navigation */}
-           <div className="flex items-center justify-between bg-slate-100 dark:bg-slate-700/50 rounded-xl p-1">
+           {/* Prominent Date Navigation - Fixed width buttons ensure perfect centering of middle element */}
+           <div className="flex items-center bg-slate-100 dark:bg-slate-700/50 rounded-xl p-1">
              <button 
                onClick={() => changeDate(-1)} 
-               className="p-3 hover:bg-white dark:hover:bg-slate-600 rounded-lg transition-all active:scale-95 text-slate-500 dark:text-slate-400"
+               className="w-12 h-12 flex items-center justify-center hover:bg-white dark:hover:bg-slate-600 rounded-lg transition-all active:scale-95 text-slate-500 dark:text-slate-400 z-20"
              >
                <ChevronLeft className="w-6 h-6" />
              </button>
              
-             <div className="text-center">
+             <div className="flex-1 relative flex flex-col items-center justify-center h-12">
                 <input 
                   type="date" 
                   value={selectedDate}
                   onChange={(e) => setSelectedDate(e.target.value)}
-                  className="bg-transparent text-slate-800 dark:text-white text-lg font-bold outline-none border-none text-center w-36 appearance-none cursor-pointer"
-                  style={{ colorScheme: 'light dark' }}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                 />
-                <div className="text-xs text-slate-400 font-medium -mt-1 pointer-events-none">
+                <div className="text-lg font-bold text-slate-800 dark:text-white leading-none">
+                   {new Date(selectedDate + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                </div>
+                <div className="text-xs text-slate-400 font-medium leading-none mt-1">
                   {new Date(selectedDate + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'long' })}
                 </div>
              </div>
              
              <button 
                onClick={() => changeDate(1)} 
-               className="p-3 hover:bg-white dark:hover:bg-slate-600 rounded-lg transition-all active:scale-95 text-slate-500 dark:text-slate-400"
+               className="w-12 h-12 flex items-center justify-center hover:bg-white dark:hover:bg-slate-600 rounded-lg transition-all active:scale-95 text-slate-500 dark:text-slate-400 z-20"
              >
                <ChevronRight className="w-6 h-6" />
              </button>
@@ -213,12 +229,34 @@ export const WeightTracker: React.FC<WeightTrackerProps> = ({ history, onLogWeig
                         setSelectedDate(entry.date);
                         window.scrollTo({ top: 0, behavior: 'smooth' });
                     }}
-                    className="w-full p-4 flex justify-between items-center hover:bg-slate-50 dark:hover:bg-slate-700/20 transition-colors"
+                    className="w-full p-4 flex justify-between items-center hover:bg-slate-50 dark:hover:bg-slate-700/20 transition-colors group"
                   >
                     <span className="text-slate-600 dark:text-slate-300">
                       {new Date(entry.date + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'long', day: 'numeric' })}
                     </span>
-                    <span className="font-bold text-slate-800 dark:text-white">{Math.round(entry.weight * KG_TO_LBS)} lbs</span>
+                    
+                    <div className="flex items-center gap-4">
+                        {/* Weight Diff Indicator */}
+                        {Math.abs(entry.diff) > 0.1 && (
+                            <div className={`flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-full 
+                                ${entry.diff < 0 
+                                    ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20' 
+                                    : 'text-red-500 bg-red-50 dark:bg-red-900/20'}`
+                                }>
+                                {entry.diff < 0 ? <TrendingDown className="w-3 h-3" /> : <TrendingUp className="w-3 h-3" />}
+                                <span>{Math.abs(entry.diff).toFixed(1)}</span>
+                            </div>
+                        )}
+                        {Math.abs(entry.diff) <= 0.1 && (
+                            <div className="text-slate-300 dark:text-slate-600">
+                                <Minus className="w-4 h-4" />
+                            </div>
+                        )}
+                        
+                        <span className="font-bold text-slate-800 dark:text-white w-16 text-right">
+                          {Math.round(entry.weight * KG_TO_LBS)} lbs
+                        </span>
+                    </div>
                   </button>
                 ))}
               </div>

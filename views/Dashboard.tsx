@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Trophy, Settings, Brain, Flame, Scale, Download, X, ChevronRight, Volume2, MessageSquare, Square, Share } from 'lucide-react';
+import { Trophy, Settings, Brain, Flame, Scale, Download, X, ChevronRight, MessageSquare, Share, TrendingDown, TrendingUp, Minus } from 'lucide-react';
 import { AppState, Meal } from '../types';
-import { calculateTargets, getDailyCoachMessage, generateSpeech } from '../services/geminiService';
+import { calculateTargets } from '../services/geminiService';
 import { Card } from '../components/ui/Card';
 import { ProgressBar } from '../components/ui/ProgressBar';
 import { EditMealModal } from '../components/EditMealModal';
@@ -23,16 +23,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ state, installPrompt, onIn
   const navigate = useNavigate();
   
   // Dashboard State
-  const [coachMessage, setCoachMessage] = useState<string>("");
-  const [isLoadingCoach, setIsLoadingCoach] = useState(false);
-  const [dismissInstall, setDismissInstall] = useState(false);
-  const [editingMeal, setEditingMeal] = useState<Meal | null>(null);
-
-  // Audio State
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const sourceNodeRef = useRef<AudioBufferSourceNode | null>(null);
+  const [dismissInstall, setDismissInstall] = React.useState(false);
+  const [editingMeal, setEditingMeal] = React.useState<Meal | null>(null);
 
   // Use local date for 'today' to ensure dashboard shows current day in user's timezone
   const today = useMemo(() => {
@@ -54,72 +46,21 @@ export const Dashboard: React.FC<DashboardProps> = ({ state, installPrompt, onIn
     fat: acc.fat + meal.fat,
   }), { calories: 0, protein: 0, carbs: 0, fat: 0 }), [todayLog]);
 
-  useEffect(() => {
-    const fetchCoach = async () => {
-      setIsLoadingCoach(true);
-      // Pass full logs to analyze trends/mood
-      const msg = await getDailyCoachMessage(state.profile, todayLog, state.logs);
-      setCoachMessage(msg);
-      setIsLoadingCoach(false);
-    };
-    fetchCoach();
+  // Overall Weight Change Calculation
+  const overallChange = useMemo(() => {
+    if (state.weightHistory.length === 0) return 0;
     
-    // Cleanup audio on unmount
-    return () => {
-      stopAudio();
-    };
-  }, []); 
-
-  const stopAudio = () => {
-    if (sourceNodeRef.current) {
-      sourceNodeRef.current.stop();
-      sourceNodeRef.current = null;
-    }
-    if (audioContextRef.current) {
-      audioContextRef.current.close();
-      audioContextRef.current = null;
-    }
-    setIsPlaying(false);
-  };
-
-  const handlePlayMessage = async (e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent opening chat
+    // Sort to find the very first entry
+    const sorted = [...state.weightHistory].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    const startWeight = sorted[0].weight;
+    const currentWeight = state.profile.currentWeight;
     
-    if (isPlaying) {
-      stopAudio();
-      return;
-    }
-
-    if (!coachMessage) return;
-
-    setIsGeneratingAudio(true);
-    try {
-      // Use the user's selected voice, default to Kore if not set (though default is in profile)
-      const buffer = await generateSpeech(coachMessage, state.profile.voice || 'Kore');
-      if (buffer) {
-        const ctx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
-        audioContextRef.current = ctx;
-        
-        const source = ctx.createBufferSource();
-        source.buffer = buffer;
-        source.connect(ctx.destination);
-        source.onended = () => setIsPlaying(false);
-        
-        sourceNodeRef.current = source;
-        source.start(0);
-        setIsPlaying(true);
-      }
-    } catch (err) {
-      console.error("Playback failed", err);
-    } finally {
-      setIsGeneratingAudio(false);
-    }
-  };
+    return (currentWeight - startWeight) * KG_TO_LBS;
+  }, [state.weightHistory, state.profile.currentWeight]);
 
   const handleOpenCoachChat = () => {
-    if (!coachMessage) return;
-    // Navigate to coach view, passing the current message as context
-    navigate('/coach', { state: { initialContext: coachMessage } });
+    // Navigate to coach view, flagging that we want to fetch the daily insight immediately
+    navigate('/coach', { state: { fetchInsight: true } });
   };
 
   const showInstallBanner = !isStandalone && !dismissInstall && (installPrompt || isIOS);
@@ -127,22 +68,22 @@ export const Dashboard: React.FC<DashboardProps> = ({ state, installPrompt, onIn
   return (
     <div className="pb-24 space-y-6">
       
-      {/* Install Prompt Banner - High Priority */}
+      {/* Install Prompt Banner - Theme Consistent */}
       {showInstallBanner && (
-        <div className="bg-slate-900 dark:bg-emerald-900/40 text-white p-4 rounded-2xl shadow-xl flex flex-col gap-3 animate-fade-in-up border border-slate-800 dark:border-emerald-800/50">
+        <Card className="flex flex-col gap-3 animate-fade-in-up border-emerald-500/30 dark:border-emerald-500/50 ring-1 ring-emerald-500/20">
            <div className="flex items-center justify-between">
              <div className="flex items-center gap-3">
-               <div className="p-2 bg-emerald-500 rounded-xl text-white shadow-lg shadow-emerald-500/20">
+               <div className="p-2 bg-emerald-100 dark:bg-emerald-900/50 rounded-xl text-emerald-600 dark:text-emerald-400">
                  <Download className="w-6 h-6" />
                </div>
                <div>
-                 <h3 className="font-bold text-base">Install App</h3>
-                 <p className="text-slate-300 text-xs">Faster, full-screen, works offline</p>
+                 <h3 className="font-bold text-base text-slate-800 dark:text-white">Install App</h3>
+                 <p className="text-slate-500 dark:text-slate-400 text-xs">Faster, full-screen, works offline</p>
                </div>
              </div>
              <button 
                onClick={() => setDismissInstall(true)}
-               className="p-2 hover:bg-white/10 rounded-full transition"
+               className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition"
              >
                <X className="w-4 h-4 text-slate-400" />
              </button>
@@ -150,14 +91,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ state, installPrompt, onIn
            
            {/* Dynamic Content based on Platform */}
            {isIOS ? (
-             <div className="bg-white/5 rounded-xl p-3 text-xs leading-relaxed border border-white/5">
-               <p className="font-semibold mb-2 text-emerald-400">To install on iPhone/iPad:</p>
-               <div className="flex items-center gap-2 mb-1">
-                 <span className="w-5 h-5 flex items-center justify-center bg-white/10 rounded-full">1</span>
+             <div className="bg-slate-50 dark:bg-slate-700/30 rounded-xl p-3 text-xs leading-relaxed border border-slate-100 dark:border-slate-700/50">
+               <p className="font-semibold mb-2 text-slate-700 dark:text-slate-300">To install on iPhone/iPad:</p>
+               <div className="flex items-center gap-2 mb-1 text-slate-600 dark:text-slate-400">
+                 <span className="w-5 h-5 flex items-center justify-center bg-white dark:bg-slate-600 rounded-full shadow-sm">1</span>
                  <span>Tap the <strong>Share</strong> button <Share className="w-3 h-3 inline mx-1" /></span>
                </div>
-               <div className="flex items-center gap-2">
-                 <span className="w-5 h-5 flex items-center justify-center bg-white/10 rounded-full">2</span>
+               <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
+                 <span className="w-5 h-5 flex items-center justify-center bg-white dark:bg-slate-600 rounded-full shadow-sm">2</span>
                  <span>Scroll down and tap <strong>"Add to Home Screen"</strong></span>
                </div>
              </div>
@@ -169,7 +110,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ state, installPrompt, onIn
                <Download className="w-4 h-4" /> Install Now
              </button>
            )}
-        </div>
+        </Card>
       )}
 
       <header className="flex justify-between items-center">
@@ -197,39 +138,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ state, installPrompt, onIn
            <MessageSquare className="w-5 h-5 text-white/80" />
         </div>
 
-        <div className="flex gap-4 items-start">
-          <div className="bg-white/20 p-2 rounded-lg flex-shrink-0">
-            <Brain className="w-6 h-6 text-white" />
+        <div className="flex gap-4 items-center">
+          <div className="bg-white/20 p-3 rounded-xl flex-shrink-0 backdrop-blur-sm">
+            <Brain className="w-8 h-8 text-white" />
           </div>
           <div className="flex-1">
-            <div className="flex justify-between items-start">
-               <h3 className="font-semibold text-lg mb-1">Daily Insight</h3>
-            </div>
-            {isLoadingCoach ? (
-              <div className="animate-pulse h-4 w-48 bg-white/30 rounded"></div>
-            ) : (
-              <div className="space-y-3">
-                <p className="text-emerald-50 text-sm leading-relaxed">{coachMessage}</p>
-                
-                <div className="flex items-center gap-2">
-                  <button 
-                    onClick={handlePlayMessage}
-                    disabled={isGeneratingAudio}
-                    className="flex items-center gap-2 bg-white/20 hover:bg-white/30 transition px-3 py-1.5 rounded-full text-xs font-medium backdrop-blur-sm disabled:opacity-50"
-                  >
-                    {isGeneratingAudio ? (
-                       <span className="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin"></span>
-                    ) : isPlaying ? (
-                       <Square className="w-3 h-3 fill-current" />
-                    ) : (
-                       <Volume2 className="w-3 h-3" />
-                    )}
-                    {isPlaying ? "Stop" : "Listen"}
-                  </button>
-                  <span className="text-[10px] text-white/60">Tap card to chat</span>
-                </div>
-              </div>
-            )}
+             <h3 className="font-bold text-lg mb-1">Daily Insight</h3>
+             <p className="text-emerald-50 text-sm font-medium">Tap to chat with your coach & get today's analysis.</p>
+          </div>
+          <div className="bg-white/20 p-2 rounded-full backdrop-blur-sm">
+            <ChevronRight className="w-5 h-5 text-white" />
           </div>
         </div>
       </Card>
@@ -241,10 +159,23 @@ export const Dashboard: React.FC<DashboardProps> = ({ state, installPrompt, onIn
           <span className="text-2xl font-bold text-slate-800 dark:text-white">{targets.calories - consumed.calories}</span>
           <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">Kcal Remaining</span>
         </Card>
-        <Card className="p-4 flex flex-col items-center justify-center">
+        
+        <Card className="p-4 flex flex-col items-center justify-center relative overflow-hidden">
           <Scale className="w-8 h-8 text-blue-500 mb-2" />
           <span className="text-2xl font-bold text-slate-800 dark:text-white">{Math.round(state.profile.currentWeight * KG_TO_LBS)}</span>
           <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">Current lbs</span>
+          
+          {/* Overall Change Indicator */}
+          {Math.abs(overallChange) > 0.5 && (
+            <div className={`mt-2 flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full 
+              ${overallChange < 0 
+                ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400' 
+                : 'bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400'
+              }`}>
+               {overallChange < 0 ? <TrendingDown className="w-3 h-3" /> : <TrendingUp className="w-3 h-3" />}
+               <span>{Math.abs(overallChange).toFixed(1)} lbs</span>
+            </div>
+          )}
         </Card>
       </div>
 

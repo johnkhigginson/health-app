@@ -35,9 +35,9 @@ export const NavBar: React.FC<NavBarProps> = ({ onMenuClick }) => {
         <div className="relative flex justify-center items-center h-full">
            <button 
             onClick={onMenuClick}
-            className="absolute -top-6 bg-emerald-600 text-white p-4 rounded-full shadow-lg hover:bg-emerald-700 transition flex items-center justify-center ring-4 ring-slate-50 dark:ring-slate-900 focus:outline-none focus:ring-emerald-500/50"
+            className="absolute -top-6 bg-emerald-600 text-white w-16 h-16 rounded-full shadow-lg hover:bg-emerald-700 transition flex items-center justify-center ring-4 ring-slate-50 dark:ring-slate-900 focus:outline-none focus:ring-emerald-500/50"
           >
-            <Plus className="w-6 h-6" />
+            <Plus className="w-8 h-8" />
           </button>
         </div>
 

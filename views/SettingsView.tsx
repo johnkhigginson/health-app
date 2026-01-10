@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { Moon, Sun, Bell, Download, Mic, Play, Square, FileDown, FileUp, ChevronDown, ChevronUp, Share, Check, FileSpreadsheet } from 'lucide-react';
+import { Moon, Sun, Bell, Download, Mic, Play, Square, FileDown, FileUp, ChevronDown, ChevronUp, Share, Check, FileSpreadsheet, Calculator, Loader2 } from 'lucide-react';
 import { AppState, UserProfile } from '../types';
 import { Card } from '../components/ui/Card';
-import { AVAILABLE_VOICES, generateSpeech } from '../services/geminiService';
+import { AVAILABLE_VOICES, generateSpeech, generateDietPlan } from '../services/geminiService';
 
 interface SettingsViewProps {
   state: AppState;
@@ -19,6 +19,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ state, onUpdateProfi
   const profile = state.profile;
   const [playingVoice, setPlayingVoice] = useState<string | null>(null);
   const [isVoiceSettingsOpen, setIsVoiceSettingsOpen] = useState(false);
+  const [isRecalculating, setIsRecalculating] = useState(false);
   
   const handleToggleTheme = () => {
     const newTheme = profile.theme === 'light' ? 'dark' : 'light';
@@ -71,6 +72,20 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ state, onUpdateProfi
     } catch (e) {
       console.error(e);
       setPlayingVoice(null);
+    }
+  };
+
+  const handleRecalculatePlan = async () => {
+    if(window.confirm("Recalculate your nutrition targets based on your current profile?")) {
+        setIsRecalculating(true);
+        const plan = await generateDietPlan(profile);
+        setIsRecalculating(false);
+        if (plan) {
+            onUpdateProfile({ ...profile, macros: plan });
+            alert("Nutrition plan updated!");
+        } else {
+            alert("Failed to connect to AI. Please try again later.");
+        }
     }
   };
 
@@ -176,35 +191,53 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ state, onUpdateProfi
         
         {/* PWA Install Button (Shown if not installed) */}
         {!isStandalone && (installPrompt || isIOS) && (
-          <Card className="bg-emerald-600 text-white border-none relative overflow-hidden group animate-fade-in-up">
-            <div className="absolute right-0 top-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-110"></div>
-            <div className="relative">
-              <div className="flex gap-3 items-center mb-3">
-                 <div className="p-2 bg-white/20 rounded-lg">
-                   <Download className="w-6 h-6 text-white" />
+          <Card className="flex flex-col gap-3 animate-fade-in-up border-emerald-500/30 dark:border-emerald-500/50 ring-1 ring-emerald-500/20">
+            <div className="flex items-center gap-3">
+                 <div className="p-2 bg-emerald-100 dark:bg-emerald-900/50 rounded-xl text-emerald-600 dark:text-emerald-400">
+                   <Download className="w-6 h-6" />
                  </div>
                  <div>
-                   <h3 className="font-bold text-white text-lg">Install App</h3>
-                   <p className="text-emerald-100 text-sm">Better experience & full screen</p>
+                   <h3 className="font-bold text-slate-800 dark:text-white text-lg">Install App</h3>
+                   <p className="text-slate-500 dark:text-slate-400 text-sm">Better experience & full screen</p>
                  </div>
-              </div>
+            </div>
               
               {isIOS ? (
-                 <div className="bg-white/10 rounded-xl p-3 text-xs leading-relaxed space-y-1">
-                   <div className="flex items-center gap-2">1. Tap Share <Share className="w-3 h-3" /></div>
-                   <div className="flex items-center gap-2">2. Tap <strong>"Add to Home Screen"</strong></div>
+                 <div className="bg-slate-50 dark:bg-slate-700/30 rounded-xl p-3 text-xs leading-relaxed border border-slate-100 dark:border-slate-700/50 space-y-2">
+                   <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
+                        1. Tap Share <Share className="w-3 h-3" />
+                   </div>
+                   <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
+                        2. Tap <strong>"Add to Home Screen"</strong>
+                   </div>
                  </div>
               ) : (
                 <button 
                   onClick={onInstall}
-                  className="w-full bg-white text-emerald-600 px-5 py-3 rounded-xl text-sm font-bold shadow-lg hover:bg-emerald-50 transition"
+                  className="w-full bg-emerald-600 text-white px-5 py-3 rounded-xl text-sm font-bold shadow-lg hover:bg-emerald-700 transition"
                 >
                   Install Now
                 </button>
               )}
-            </div>
           </Card>
         )}
+
+        {/* Nutrition Plan Management */}
+        <Card>
+           <h3 className="font-semibold text-slate-800 dark:text-white mb-2">Nutrition Plan</h3>
+           <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
+              Your targets are calculated based on your profile (Age, Weight, Activity, etc).
+           </p>
+           
+           <button 
+             onClick={handleRecalculatePlan}
+             disabled={isRecalculating}
+             className="w-full border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 py-3 rounded-xl hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition flex items-center justify-center gap-2"
+           >
+             {isRecalculating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Calculator className="w-4 h-4" />}
+             Recalculate Targets with AI
+           </button>
+        </Card>
 
         {/* Coach Voice Accordion */}
         <Card onClick={() => setIsVoiceSettingsOpen(!isVoiceSettingsOpen)} className="cursor-pointer transition-all">
