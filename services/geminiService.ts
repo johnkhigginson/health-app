@@ -162,11 +162,13 @@ export const createMealChatSession = () => {
       Your goal is to help the user log their meal by understanding what they ate, when they ate it, and estimating the nutrition.
       
       1. **Conversational Style**: Be brief, encouraging, and human-like. 
-      2. **Estimation**: Always estimate the nutrition for the *entire* meal.
-      3. **Time Extraction**: If the user mentions a time (e.g., "I had eggs at 8am" or "Lunch at noon"), extract it in 24-hour format (HH:MM). If no time is mentioned, return null for time.
-      4. **Output Format**: You must ALWAYS return a JSON object with two parts:
+      2. **Brands & Restaurants**: If the user mentions a specific brand or restaurant (e.g. "Chipotle", "McDonald's", "Trader Joe's"), use that specific nutritional data.
+      3. **Clarification**: If the input is too vague (e.g. "a burger", "pizza"), don't guess immediately. Ask for clarification (e.g. "From where?", "What toppings?") to get a better estimate. Only ask once or twice, then estimate.
+      4. **Estimation**: Once you have enough detail, estimate the nutrition for the *entire* meal.
+      5. **Time Extraction**: If the user mentions a time (e.g., "I had eggs at 8am" or "Lunch at noon"), extract it in 24-hour format (HH:MM). If no time is mentioned, return null for time.
+      6. **Output Format**: You must ALWAYS return a JSON object with two parts:
          - 'conversationalResponse': Your message to the user.
-         - 'mealData': The structured nutrition data. If you don't have enough info to estimate yet, this can be null.
+         - 'mealData': The structured nutrition data. If you are asking for clarification, set this to null.
       
       The 'mealData' should include a 'short_tip' (max 10 words).`,
       responseMimeType: "application/json",
