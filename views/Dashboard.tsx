@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Trophy, Settings, Brain, Flame, Scale, Download, X, ChevronRight, MessageSquare, Share, TrendingDown, TrendingUp, Minus } from 'lucide-react';
+import { Trophy, Settings, Lightbulb, Flame, Scale, Download, X, ChevronRight, MessageSquare, Share, TrendingDown, TrendingUp, Minus } from 'lucide-react';
 import { AppState, Meal } from '../types';
 import { calculateTargets } from '../services/geminiService';
 import { Card } from '../components/ui/Card';
@@ -140,7 +140,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ state, installPrompt, onIn
 
         <div className="flex gap-4 items-center">
           <div className="bg-white/20 p-3 rounded-xl flex-shrink-0 backdrop-blur-sm">
-            <Brain className="w-8 h-8 text-white" />
+            <Lightbulb className="w-8 h-8 text-white" />
           </div>
           <div className="flex-1">
              <h3 className="font-bold text-lg mb-1">Daily Insight</h3>
