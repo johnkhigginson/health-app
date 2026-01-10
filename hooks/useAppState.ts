@@ -3,6 +3,14 @@ import { AppState, DEFAULT_PROFILE, Meal, UserProfile, Grade } from '../types';
 
 const STATE_KEY = 'nutriflow_state';
 
+// Helper to get YYYY-MM-DD in local time
+const getLocalDateKey = (date: Date = new Date()) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 export const useAppState = () => {
   const [state, setState] = useState<AppState>(() => {
     try {
@@ -35,7 +43,7 @@ export const useAppState = () => {
 
   // Streak Calculation
   useEffect(() => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getLocalDateKey();
     const logDates = Object.keys(state.logs).sort();
     
     if (logDates.length === 0) return;
@@ -49,7 +57,7 @@ export const useAppState = () => {
       checkDate.setDate(checkDate.getDate() - 1);
       
       while (true) {
-        const dateStr = checkDate.toISOString().split('T')[0];
+        const dateStr = getLocalDateKey(checkDate);
         if (state.logs[dateStr] && state.logs[dateStr].meals.length > 0) {
           currentStreak++;
           checkDate.setDate(checkDate.getDate() - 1);
@@ -60,9 +68,26 @@ export const useAppState = () => {
     } else {
         let yesterday = new Date();
         yesterday.setDate(yesterday.getDate() - 1);
-        const yStr = yesterday.toISOString().split('T')[0];
+        const yStr = getLocalDateKey(yesterday);
         if (state.logs[yStr] && state.logs[yStr].meals.length > 0) {
            // Maintain streak visualization if missed today but had yesterday
+           // We might need to calculate the existing streak up to yesterday here
+           // For simplicity, we just don't reset it to 0 immediately if yesterday exists
+           // But strictly speaking, streak calculation usually requires a recursive check.
+           // Let's do a quick recalc for yesterday to be accurate.
+           let streak = 0;
+           let check = new Date();
+           check.setDate(check.getDate() - 1); // Start from yesterday
+           while(true) {
+             const dStr = getLocalDateKey(check);
+             if (state.logs[dStr] && state.logs[dStr].meals.length > 0) {
+               streak++;
+               check.setDate(check.getDate() - 1);
+             } else {
+               break;
+             }
+           }
+           currentStreak = streak;
         }
     }
     
@@ -76,8 +101,8 @@ export const useAppState = () => {
   };
 
   const logMeal = (meal: Meal) => {
-    // Determine date from meal timestamp, not just 'today', to allow retroactive logging if needed
-    const dateKey = new Date(meal.timestamp).toISOString().split('T')[0];
+    // Determine date from meal timestamp using LOCAL time
+    const dateKey = getLocalDateKey(new Date(meal.timestamp));
     
     setState(prev => {
       const existingLog = prev.logs[dateKey] || { date: dateKey, meals: [] };
@@ -95,10 +120,13 @@ export const useAppState = () => {
   };
 
   const editMeal = (meal: Meal) => {
-    const dateKey = new Date(meal.timestamp).toISOString().split('T')[0];
+    const dateKey = getLocalDateKey(new Date(meal.timestamp));
     
     setState(prev => {
       const log = prev.logs[dateKey];
+      // If log doesn't exist (e.g. date changed to a new empty day), create it? 
+      // For now assuming date hasn't shifted widely or log exists.
+      // If we supported moving meals between days, we'd need more logic.
       if (!log) return prev;
 
       const updatedMeals = log.meals.map(m => m.id === meal.id ? meal : m);
@@ -114,7 +142,7 @@ export const useAppState = () => {
   };
 
   const deleteMeal = (mealId: string, timestamp: string) => {
-    const dateKey = new Date(timestamp).toISOString().split('T')[0];
+    const dateKey = getLocalDateKey(new Date(timestamp));
     
     setState(prev => {
       const log = prev.logs[dateKey];
@@ -133,8 +161,8 @@ export const useAppState = () => {
   };
 
   const logWeight = (weight: number, dateStr?: string) => {
-    // Use provided date or default to today
-    const dateKey = dateStr || new Date().toISOString().split('T')[0];
+    // Use provided date (YYYY-MM-DD from input) or default to today local
+    const dateKey = dateStr || getLocalDateKey();
 
     setState(prev => {
       const existingLog = prev.logs[dateKey] || { date: dateKey, meals: [] };
