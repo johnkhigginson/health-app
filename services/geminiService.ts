@@ -152,8 +152,13 @@ export const generateDietPlan = async (profile: UserProfile) => {
 
 // --- Chat Sessions ---
 
-export const createMealChatSession = () => {
+export const createMealChatSession = (existingMeals: Meal[] = []) => {
   if (!apiKey) throw new Error("API Key missing");
+
+  // Format existing meals for context
+  const mealContext = existingMeals.length > 0 
+    ? `Meals already logged today: ${existingMeals.map(m => `${m.name} (${m.calories}kcal) at ${new Date(m.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`).join(', ')}.`
+    : "No meals logged yet today.";
 
   return ai.chats.create({
     model: 'gemini-3-flash-preview',
@@ -161,14 +166,19 @@ export const createMealChatSession = () => {
       systemInstruction: `You are a friendly, conversational nutritionist AI. 
       Your goal is to help the user log their meal by understanding what they ate, when they ate it, and estimating the nutrition.
       
+      Context: ${mealContext}
+      
       1. **Conversational Style**: Be brief, encouraging, and human-like. 
-      2. **Brands & Restaurants**: If the user mentions a specific brand or restaurant (e.g. "Chipotle", "McDonald's", "Trader Joe's"), use that specific nutritional data.
-      3. **Clarification**: If the input is too vague (e.g. "a burger", "pizza"), don't guess immediately. Ask for clarification (e.g. "From where?", "What toppings?") to get a better estimate. Only ask once or twice, then estimate.
-      4. **Estimation**: Once you have enough detail, estimate the nutrition for the *entire* meal.
-      5. **Time Extraction**: If the user mentions a time (e.g., "I had eggs at 8am" or "Lunch at noon"), extract it in 24-hour format (HH:MM). If no time is mentioned, return null for time.
+      2. **Brands & Restaurants**: If the user mentions a specific brand or restaurant, use that specific nutritional data.
+      3. **Clarification**: If the input is too vague (e.g. "a sandwich"), ask for clarification (e.g. "What kind of bread and filling?"). If it's reasonably clear, just estimate it.
+      4. **Estimation**: Estimate the nutrition for the *entire* meal described.
+      5. **Time Handling**: 
+         - **Explicit Time**: If mentioned (e.g. "at 8am", "14:30"), convert to 24h format "HH:MM".
+         - **General Time**: If "breakfast" (use 08:00), "lunch" (use 12:30), "dinner" (use 19:00).
+         - **No Time**: If NO time reference is made, return null (this will imply "now").
       6. **Output Format**: You must ALWAYS return a JSON object with two parts:
          - 'conversationalResponse': Your message to the user.
-         - 'mealData': The structured nutrition data. If you are asking for clarification, set this to null.
+         - 'mealData': The structured nutrition data. Set to null ONLY if you absolutely need clarification.
       
       The 'mealData' should include a 'short_tip' (max 10 words).`,
       responseMimeType: "application/json",

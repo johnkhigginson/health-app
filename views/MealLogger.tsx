@@ -1,17 +1,19 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Navigate } from 'react-router-dom';
-import { ArrowUp, Check, Edit2, X, Clock, Calendar } from 'lucide-react';
+import { ArrowUp, Check, Edit2, X, Clock, Calendar, Utensils } from 'lucide-react';
 import { Meal } from '../types';
 import { createMealChatSession } from '../services/geminiService';
 import MicrophoneButton from '../components/MicrophoneButton';
 import { EditMealModal } from '../components/EditMealModal';
 import { logEvent } from '../services/analytics';
+import { useAppState } from '../hooks/useAppState';
 
 interface MealLoggerProps {
   onLogMeal: (meal: Meal) => void;
 }
 
 export const MealLogger: React.FC<MealLoggerProps> = ({ onLogMeal }) => {
+  const { state } = useAppState();
   const [messages, setMessages] = useState<{ role: 'user' | 'model'; text: string }[]>([
     { role: 'model', text: 'Hi! What did you have to eat? You can tell me what you had and when you had it.' }
   ]);
@@ -26,19 +28,20 @@ export const MealLogger: React.FC<MealLoggerProps> = ({ onLogMeal }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [redirect, setRedirect] = useState(false);
 
+  // Initialize chat with today's context
   useEffect(() => {
     try {
-      chatRef.current = createMealChatSession();
+      const today = new Date().toISOString().split('T')[0];
+      const todayMeals = state.logs[today]?.meals || [];
+      chatRef.current = createMealChatSession(todayMeals);
     } catch (e) {
       console.error("Failed to init chat", e);
     }
-  }, []);
+  }, [state.logs]);
 
   useEffect(() => {
-    if (!draftMeal) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [messages, draftMeal]);
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, draftMeal, isProcessing]);
 
   const parseTime = (timeStr: string | null): string => {
     const now = new Date();
@@ -56,6 +59,9 @@ export const MealLogger: React.FC<MealLoggerProps> = ({ onLogMeal }) => {
 
   const handleSend = async () => {
     if (!input.trim() || !chatRef.current || isProcessing) return;
+
+    // If user types while a draft is active, clear the draft as they are refining it
+    if (draftMeal) setDraftMeal(null);
 
     const userText = input;
     setInput('');
@@ -132,7 +138,7 @@ export const MealLogger: React.FC<MealLoggerProps> = ({ onLogMeal }) => {
       </div>
       
       {/* Messages Area */}
-      <div className={`flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar ${draftMeal ? 'pb-72' : ''}`}>
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar pb-32">
         {messages.map((msg, idx) => (
           <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
              <div 
@@ -146,6 +152,7 @@ export const MealLogger: React.FC<MealLoggerProps> = ({ onLogMeal }) => {
              </div>
           </div>
         ))}
+        
         {isProcessing && (
            <div className="flex justify-start">
              <div className="bg-white dark:bg-slate-800 px-4 py-3 rounded-2xl rounded-bl-none border border-slate-200 dark:border-slate-700 shadow-sm">
@@ -157,65 +164,69 @@ export const MealLogger: React.FC<MealLoggerProps> = ({ onLogMeal }) => {
              </div>
            </div>
         )}
+
+        {/* Inline Draft Card */}
+        {draftMeal && !isProcessing && (
+           <div className="animate-fade-in-up">
+              <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-lg border border-slate-100 dark:border-slate-700 p-5 mx-1">
+                  <div className="flex justify-between items-start mb-4">
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                          <span className="bg-emerald-100 dark:bg-emerald-900/40 p-1.5 rounded-lg text-emerald-600 dark:text-emerald-400">
+                             <Utensils className="w-4 h-4" />
+                          </span>
+                          <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Proposed Meal</span>
+                      </div>
+                      <h3 className="font-bold text-xl text-slate-800 dark:text-white">{draftMeal.name}</h3>
+                      <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 mt-1">
+                        <Clock className="w-3 h-3" />
+                        <span>{new Date(draftMeal.timestamp).toLocaleTimeString([], {hour: 'numeric', minute: '2-digit'})}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-4 gap-2 mb-5">
+                     <div className="bg-orange-50 dark:bg-orange-900/20 p-2 rounded-xl text-center">
+                        <div className="text-[10px] text-orange-600 dark:text-orange-400 uppercase font-bold">Cals</div>
+                        <div className="font-bold text-slate-800 dark:text-white">{draftMeal.calories}</div>
+                     </div>
+                     <div className="bg-slate-50 dark:bg-slate-700/50 p-2 rounded-xl text-center">
+                        <div className="text-[10px] text-slate-500 uppercase font-bold">Pro</div>
+                        <div className="font-semibold text-slate-800 dark:text-white">{draftMeal.protein}g</div>
+                     </div>
+                     <div className="bg-slate-50 dark:bg-slate-700/50 p-2 rounded-xl text-center">
+                        <div className="text-[10px] text-slate-500 uppercase font-bold">Carb</div>
+                        <div className="font-semibold text-slate-800 dark:text-white">{draftMeal.carbs}g</div>
+                     </div>
+                     <div className="bg-slate-50 dark:bg-slate-700/50 p-2 rounded-xl text-center">
+                        <div className="text-[10px] text-slate-500 uppercase font-bold">Fat</div>
+                        <div className="font-semibold text-slate-800 dark:text-white">{draftMeal.fat}g</div>
+                     </div>
+                  </div>
+                  
+                  <div className="flex gap-3">
+                    <button 
+                      onClick={() => setIsReviewOpen(true)}
+                      className="flex-1 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-white py-3 rounded-xl font-semibold text-sm hover:bg-slate-50 dark:hover:bg-slate-600 flex items-center justify-center gap-2 transition"
+                    >
+                      <Edit2 className="w-4 h-4" /> Edit
+                    </button>
+                    <button 
+                      onClick={handleQuickSave}
+                      className="flex-[2] bg-emerald-600 text-white py-3 rounded-xl font-semibold text-sm hover:bg-emerald-700 shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2 transition"
+                    >
+                      <Check className="w-4 h-4" /> Confirm & Save
+                    </button>
+                  </div>
+              </div>
+           </div>
+        )}
+        
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input or Draft Panel */}
+      {/* Unified Input UI */}
       <div className="absolute bottom-0 left-0 right-0 p-4 pt-2 bg-slate-50 dark:bg-slate-900 transition-transform duration-300 pb-safe-0">
-        
-        {/* Draft Panel */}
-        {draftMeal ? (
-          <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-[0_-8px_30px_rgba(0,0,0,0.12)] border border-slate-100 dark:border-slate-700 p-5 animate-fade-in-up">
-              <div className="flex justify-between items-start mb-4">
-                <div>
-                  <h3 className="font-bold text-xl text-slate-800 dark:text-white mb-1">{draftMeal.name}</h3>
-                  <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                    <Clock className="w-3 h-3" />
-                    <span>{new Date(draftMeal.timestamp).toLocaleTimeString([], {hour: 'numeric', minute: '2-digit'})}</span>
-                    <span>•</span>
-                    <span className="bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-400 px-1.5 py-0.5 rounded">{draftMeal.calories} kcal</span>
-                  </div>
-                </div>
-                <button 
-                  onClick={() => setDraftMeal(null)}
-                  className="p-1.5 bg-slate-100 dark:bg-slate-700 text-slate-500 rounded-full hover:bg-slate-200"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              <div className="grid grid-cols-3 gap-2 mb-5">
-                 <div className="bg-slate-50 dark:bg-slate-700/50 p-2 rounded-xl text-center">
-                    <div className="text-xs text-slate-500 uppercase font-bold">Protein</div>
-                    <div className="font-semibold text-slate-800 dark:text-white">{draftMeal.protein}g</div>
-                 </div>
-                 <div className="bg-slate-50 dark:bg-slate-700/50 p-2 rounded-xl text-center">
-                    <div className="text-xs text-slate-500 uppercase font-bold">Carbs</div>
-                    <div className="font-semibold text-slate-800 dark:text-white">{draftMeal.carbs}g</div>
-                 </div>
-                 <div className="bg-slate-50 dark:bg-slate-700/50 p-2 rounded-xl text-center">
-                    <div className="text-xs text-slate-500 uppercase font-bold">Fat</div>
-                    <div className="font-semibold text-slate-800 dark:text-white">{draftMeal.fat}g</div>
-                 </div>
-              </div>
-              
-              <div className="flex gap-3">
-                <button 
-                  onClick={() => setIsReviewOpen(true)}
-                  className="flex-1 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-white py-3 rounded-xl font-semibold text-sm hover:bg-slate-50 dark:hover:bg-slate-600 flex items-center justify-center gap-2 transition"
-                >
-                  <Edit2 className="w-4 h-4" /> Edit
-                </button>
-                <button 
-                  onClick={handleQuickSave}
-                  className="flex-[2] bg-emerald-600 text-white py-3 rounded-xl font-semibold text-sm hover:bg-emerald-700 shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2 transition"
-                >
-                  <Check className="w-4 h-4" /> Log Meal
-                </button>
-              </div>
-          </div>
-        ) : (
-          /* UNIFIED INPUT UI */
           <div className="pb-safe">
             <div className="flex items-end gap-2 bg-white dark:bg-slate-800 p-2 rounded-[2rem] shadow-lg border border-slate-200 dark:border-slate-700 min-h-[4rem]">
               <textarea
@@ -227,7 +238,7 @@ export const MealLogger: React.FC<MealLoggerProps> = ({ onLogMeal }) => {
                     handleSend();
                   }
                 }}
-                placeholder="Log your food..."
+                placeholder={draftMeal ? "Type to correct (e.g. 'Add a soda')..." : "Log your food..."}
                 className="flex-1 bg-transparent border-none focus:ring-0 resize-none py-3 px-4 text-slate-800 dark:text-white placeholder:text-slate-400 leading-relaxed self-center"
                 style={{ minHeight: '48px', maxHeight: '120px' }}
                 rows={1}
@@ -247,7 +258,6 @@ export const MealLogger: React.FC<MealLoggerProps> = ({ onLogMeal }) => {
               </div>
             </div>
           </div>
-        )}
       </div>
 
       <EditMealModal 
