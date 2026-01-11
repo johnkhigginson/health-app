@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { AppState, DEFAULT_PROFILE, Meal, UserProfile, Grade } from '../types';
+import { AppState, DEFAULT_PROFILE, Meal, UserProfile, Grade, DailyLog } from '../types';
 
 const STATE_KEY = 'nutriflow_state';
 
@@ -112,15 +112,29 @@ export const useAppState = () => {
     });
   };
 
-  const editMeal = (updatedMeal: Meal, originalTimestamp: string) => {
-    const oldDateKey = getLocalDateKey(new Date(originalTimestamp));
-    const newDateKey = getLocalDateKey(new Date(updatedMeal.timestamp));
+  // Helper to find which date log contains the meal
+  const findLogDateForMeal = (logs: Record<string, DailyLog>, mealId: string): string | null => {
+    for (const [date, log] of Object.entries(logs)) {
+      if (log.meals.some(m => m.id === mealId)) {
+        return date;
+      }
+    }
+    return null;
+  };
 
+  const editMeal = (updatedMeal: Meal) => {
     setState(prev => {
-      // If date hasn't changed, simple update
+      const oldDateKey = findLogDateForMeal(prev.logs, updatedMeal.id);
+      
+      // If we can't find the old meal, try using the timestamp as a fallback location (though findLogDateForMeal should work)
+      // or simply treat it as a new log if critical. For now, return prev if not found to avoid corruption.
+      if (!oldDateKey) return prev;
+
+      const newDateKey = getLocalDateKey(new Date(updatedMeal.timestamp));
+
       if (oldDateKey === newDateKey) {
+        // Simple in-place update
         const log = prev.logs[oldDateKey];
-        if (!log) return prev;
         const updatedMeals = log.meals.map(m => m.id === updatedMeal.id ? updatedMeal : m);
         return {
           ...prev,
@@ -129,14 +143,13 @@ export const useAppState = () => {
             [oldDateKey]: { ...log, meals: updatedMeals }
           }
         };
-      } 
-      // Date changed: Move meal
-      else {
+      } else {
+         // Move to new date
          const oldLog = prev.logs[oldDateKey];
          const newLog = prev.logs[newDateKey] || { date: newDateKey, meals: [] };
 
          // Remove from old
-         const newOldMeals = oldLog ? oldLog.meals.filter(m => m.id !== updatedMeal.id) : [];
+         const newOldMeals = oldLog.meals.filter(m => m.id !== updatedMeal.id);
          
          // Add to new
          const newNewMeals = [...newLog.meals, updatedMeal];
@@ -145,7 +158,7 @@ export const useAppState = () => {
             ...prev,
             logs: {
               ...prev.logs,
-              ...(oldLog ? { [oldDateKey]: { ...oldLog, meals: newOldMeals } } : {}),
+              [oldDateKey]: { ...oldLog, meals: newOldMeals },
               [newDateKey]: { ...newLog, meals: newNewMeals }
             }
          };
@@ -153,12 +166,12 @@ export const useAppState = () => {
     });
   };
 
-  const deleteMeal = (mealId: string, timestamp: string) => {
-    const dateKey = getLocalDateKey(new Date(timestamp));
+  const deleteMeal = (mealId: string) => {
     setState(prev => {
-      const log = prev.logs[dateKey];
-      if (!log) return prev;
+      const dateKey = findLogDateForMeal(prev.logs, mealId);
+      if (!dateKey) return prev;
 
+      const log = prev.logs[dateKey];
       const filteredMeals = log.meals.filter(m => m.id !== mealId);
       
       return {

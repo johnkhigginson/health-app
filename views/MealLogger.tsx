@@ -3,7 +3,6 @@ import { Navigate } from 'react-router-dom';
 import { ArrowUp, Check, Edit2, X, Clock, Calendar, Utensils } from 'lucide-react';
 import { Meal } from '../types';
 import { createMealChatSession } from '../services/geminiService';
-import MicrophoneButton from '../components/MicrophoneButton';
 import { EditMealModal } from '../components/EditMealModal';
 import { logEvent } from '../services/analytics';
 import { useAppState } from '../hooks/useAppState';
@@ -245,9 +244,6 @@ export const MealLogger: React.FC<MealLoggerProps> = ({ onLogMeal }) => {
               />
               
               <div className="flex items-center gap-1 pb-1 pr-1 h-12 self-end">
-                 <div className="scale-90">
-                    <MicrophoneButton onTranscript={(text) => setInput(prev => prev + (prev ? ' ' : '') + text)} isProcessing={isProcessing} />
-                 </div>
                  <button 
                    onClick={handleSend}
                    disabled={!input.trim() || isProcessing}

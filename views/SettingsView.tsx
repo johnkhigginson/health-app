@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { Moon, Sun, Bell, Download, Mic, Play, Square, FileDown, FileUp, ChevronDown, ChevronUp, Share, Check, FileSpreadsheet, Calculator, Loader2 } from 'lucide-react';
+import { Moon, Sun, Bell, Download, FileDown, FileUp, Share, FileSpreadsheet, Calculator, Loader2 } from 'lucide-react';
 import { AppState, UserProfile } from '../types';
 import { Card } from '../components/ui/Card';
-import { AVAILABLE_VOICES, generateSpeech, generateDietPlan } from '../services/geminiService';
+import { generateDietPlan } from '../services/geminiService';
 
 interface SettingsViewProps {
   state: AppState;
@@ -17,8 +17,6 @@ interface SettingsViewProps {
 
 export const SettingsView: React.FC<SettingsViewProps> = ({ state, onUpdateProfile, onImport, onReset, installPrompt, onInstall, isIOS, isStandalone }) => {
   const profile = state.profile;
-  const [playingVoice, setPlayingVoice] = useState<string | null>(null);
-  const [isVoiceSettingsOpen, setIsVoiceSettingsOpen] = useState(false);
   const [isRecalculating, setIsRecalculating] = useState(false);
   
   const handleToggleTheme = () => {
@@ -48,31 +46,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ state, onUpdateProfi
       ...profile, 
       reminders: { ...profile.reminders, time: e.target.value } 
     });
-  };
-
-  const handleVoiceChange = (voiceId: string) => {
-    onUpdateProfile({ ...profile, voice: voiceId });
-  };
-
-  const previewVoice = async (voiceId: string) => {
-    if (playingVoice) return;
-    setPlayingVoice(voiceId);
-    try {
-      const buffer = await generateSpeech("Hello, I am your health coach.", voiceId);
-      if (buffer) {
-        const ctx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
-        const source = ctx.createBufferSource();
-        source.buffer = buffer;
-        source.connect(ctx.destination);
-        source.onended = () => setPlayingVoice(null);
-        source.start(0);
-      } else {
-        setPlayingVoice(null);
-      }
-    } catch (e) {
-      console.error(e);
-      setPlayingVoice(null);
-    }
   };
 
   const handleRecalculatePlan = async () => {
@@ -237,63 +210,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ state, onUpdateProfi
              {isRecalculating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Calculator className="w-4 h-4" />}
              Recalculate Targets with AI
            </button>
-        </Card>
-
-        {/* Coach Voice Accordion */}
-        <Card onClick={() => setIsVoiceSettingsOpen(!isVoiceSettingsOpen)} className="cursor-pointer transition-all">
-           <div className="flex items-center justify-between">
-             <div className="flex items-center gap-3">
-                <div className="p-2 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-500">
-                  <Mic className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-slate-800 dark:text-white">Coach Voice</h3>
-                  <div className="flex items-center gap-2">
-                     <p className="text-xs text-slate-500 dark:text-slate-400">Choose how your AI sounds</p>
-                     <span className="text-xs bg-emerald-100 text-emerald-700 px-2 rounded-full">{profile.voice}</span>
-                  </div>
-                </div>
-             </div>
-             {isVoiceSettingsOpen ? <ChevronUp className="w-5 h-5 text-slate-400" /> : <ChevronDown className="w-5 h-5 text-slate-400" />}
-           </div>
-           
-           {isVoiceSettingsOpen && (
-             <div className="grid gap-2 mt-4 pt-4 border-t border-slate-100 dark:border-slate-700 animate-fade-in-up" onClick={(e) => e.stopPropagation()}>
-               {AVAILABLE_VOICES.map((voice) => (
-                 <div 
-                   key={voice.id}
-                   onClick={() => handleVoiceChange(voice.id)}
-                   className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all ${
-                     profile.voice === voice.id 
-                       ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-500 ring-1 ring-emerald-500' 
-                       : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-emerald-300 dark:hover:border-emerald-700'
-                   }`}
-                 >
-                   <div className="flex items-center gap-3">
-                     <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
-                        profile.voice === voice.id ? 'border-emerald-600' : 'border-slate-300 dark:border-slate-600'
-                     }`}>
-                        {profile.voice === voice.id && <div className="w-2 h-2 rounded-full bg-emerald-600" />}
-                     </div>
-                     <div>
-                        <span className="text-sm font-medium text-slate-800 dark:text-white block">{voice.label}</span>
-                        <span className="text-[10px] text-slate-500 dark:text-slate-400">{voice.style}</span>
-                     </div>
-                   </div>
-                   
-                   <button 
-                     onClick={(e) => {
-                       e.stopPropagation();
-                       previewVoice(voice.id);
-                     }}
-                     className="p-2 text-slate-400 hover:text-emerald-600 transition"
-                   >
-                     {playingVoice === voice.id ? <Square className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4" />}
-                   </button>
-                 </div>
-               ))}
-             </div>
-           )}
         </Card>
 
         {/* Appearance */}

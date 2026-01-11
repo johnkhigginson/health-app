@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ArrowUp, ChevronLeft } from 'lucide-react';
-import { createCoachChatSession, getDailyCoachMessage } from '../services/geminiService';
-import MicrophoneButton from '../components/MicrophoneButton';
+import { createCoachChatSession } from '../services/geminiService';
 import { useAppState } from '../hooks/useAppState';
 import { logEvent } from '../services/analytics';
 
@@ -32,26 +31,14 @@ export const CoachChat: React.FC = () => {
     const initChat = async () => {
         try {
             chatRef.current = createCoachChatSession(state.profile);
-            
-            // If flagged to fetch insight, do it now
-            if (location.state?.fetchInsight) {
-                setIsInitialLoading(true);
-                const today = getLocalDate();
-                const todayLog = state.logs[today] || { date: today, meals: [] };
-                
-                const msg = await getDailyCoachMessage(state.profile, todayLog, state.logs);
-                setMessages([{ role: 'model', text: msg }]);
-                setIsInitialLoading(false);
-            } else {
-                setMessages([{ role: 'model', text: `Hi ${state.profile.name}, I'm here to support you. How are you feeling about your goals today?` }]);
-            }
+            setMessages([{ role: 'model', text: `Hi ${state.profile.name}, I'm here to support you. How are you feeling about your goals today?` }]);
         } catch (e) {
             console.error("Failed to init chat", e);
             setIsInitialLoading(false);
         }
     };
     initChat();
-  }, [state.profile, state.logs, location.state]);
+  }, [state.profile]);
 
   // Scroll to bottom
   useEffect(() => {
@@ -137,9 +124,6 @@ export const CoachChat: React.FC = () => {
               />
               
               <div className="flex items-center gap-1 pb-1 pr-1 h-12 self-end">
-                 <div className="scale-90">
-                    <MicrophoneButton onTranscript={(text) => setInput(prev => prev + (prev ? ' ' : '') + text)} isProcessing={isProcessing} />
-                 </div>
                  <button 
                    onClick={handleSend}
                    disabled={!input.trim() || isProcessing}

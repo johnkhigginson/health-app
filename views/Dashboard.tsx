@@ -11,8 +11,8 @@ const KG_TO_LBS = 2.20462;
 
 interface DashboardProps {
   state: AppState;
-  onEditMeal: (meal: Meal, originalTimestamp: string) => void;
-  onDeleteMeal: (id: string, timestamp: string) => void;
+  onEditMeal: (meal: Meal) => void;
+  onDeleteMeal: (id: string) => void;
   installPrompt: any;
   onInstall: () => void;
   isIOS: boolean;
@@ -59,8 +59,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ state, onEditMeal, onDelet
   }, [state.weightHistory, state.profile.currentWeight]);
 
   const handleOpenCoachChat = () => {
-    // Navigate to coach view, flagging that we want to fetch the daily insight immediately
-    navigate('/coach', { state: { fetchInsight: true } });
+    // Navigate to coach view without fetching insight
+    navigate('/coach');
   };
 
   const showInstallBanner = !isStandalone && !dismissInstall && (installPrompt || isIOS);
@@ -143,8 +143,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ state, onEditMeal, onDelet
             <Lightbulb className="w-8 h-8 text-white" />
           </div>
           <div className="flex-1">
-             <h3 className="font-bold text-lg mb-1">Daily Insight</h3>
-             <p className="text-emerald-50 text-sm font-medium">Tap to chat with your coach & get today's analysis.</p>
+             <h3 className="font-bold text-lg mb-1">Health Coach</h3>
+             <p className="text-emerald-50 text-sm font-medium">Tap to chat with your personal wellness assistant.</p>
           </div>
           <div className="bg-white/20 p-2 rounded-full backdrop-blur-sm">
             <ChevronRight className="w-5 h-5 text-white" />
@@ -235,13 +235,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ state, onEditMeal, onDelet
         initialMeal={editingMeal}
         onSave={(updated) => {
           if (editingMeal) {
-            onEditMeal(updated, editingMeal.timestamp);
+            onEditMeal(updated);
             setEditingMeal(null);
           }
         }}
         onDelete={(id) => {
           if (editingMeal) {
-            onDeleteMeal(id, editingMeal.timestamp);
+            onDeleteMeal(id);
             setEditingMeal(null);
           }
         }}

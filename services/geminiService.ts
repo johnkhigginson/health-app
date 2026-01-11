@@ -1,50 +1,10 @@
-import { GoogleGenAI, Type, Modality } from "@google/genai";
-import { UserProfile, DailyLog, Meal, AppState } from "../types";
+import { GoogleGenAI, Type } from "@google/genai";
+import { UserProfile, Meal } from "../types";
 
 const apiKey = process.env.API_KEY || '';
 const ai = new GoogleGenAI({ apiKey });
 
-// --- Constants ---
-
-export const AVAILABLE_VOICES = [
-  { id: 'Puck', label: 'Puck (Male)', style: 'Soft' },
-  { id: 'Charon', label: 'Charon (Male)', style: 'Deep' },
-  { id: 'Kore', label: 'Kore (Female)', style: 'Calm' },
-  { id: 'Fenrir', label: 'Fenrir (Male)', style: 'Rough' },
-  { id: 'Zephyr', label: 'Zephyr (Female)', style: 'Bright' },
-];
-
 // --- Helpers ---
-
-// Audio Decoding Helper (from System Instructions)
-const decode = (base64: string) => {
-  const binaryString = atob(base64);
-  const len = binaryString.length;
-  const bytes = new Uint8Array(len);
-  for (let i = 0; i < len; i++) {
-    bytes[i] = binaryString.charCodeAt(i);
-  }
-  return bytes;
-};
-
-const decodeAudioData = async (
-  data: Uint8Array,
-  ctx: AudioContext,
-  sampleRate: number,
-  numChannels: number,
-): Promise<AudioBuffer> => {
-  const dataInt16 = new Int16Array(data.buffer);
-  const frameCount = dataInt16.length / numChannels;
-  const buffer = ctx.createBuffer(numChannels, frameCount, sampleRate);
-
-  for (let channel = 0; channel < numChannels; channel++) {
-    const channelData = buffer.getChannelData(channel);
-    for (let i = 0; i < frameCount; i++) {
-      channelData[i] = dataInt16[i * numChannels + channel] / 32768.0;
-    }
-  }
-  return buffer;
-};
 
 const calculateAge = (birthDate: string): number => {
   if (!birthDate) return 30; // Fallback
@@ -155,32 +115,40 @@ export const generateDietPlan = async (profile: UserProfile) => {
 export const createMealChatSession = (existingMeals: Meal[] = []) => {
   if (!apiKey) throw new Error("API Key missing");
 
-  // Format existing meals for context
+  // 1. OPTIMIZATION: Calculate summary totals to save AI "thinking" tokens
+  const totals = existingMeals.reduce(
+    (acc, m) => {
+      acc.cal += m.calories;
+      acc.p += m.protein;
+      acc.c += m.carbs;
+      acc.f += m.fat;
+      return acc;
+    },
+    { cal: 0, p: 0, c: 0, f: 0 }
+  );
+
+  // 2. OPTIMIZATION: Limit context to the last 5 meals and use a dense string format
+  const recentMeals = existingMeals.slice(-5).map(m => {
+    const time = new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+    return `${time}|${m.name}|${m.calories}`;
+  }).join('; ');
+
   const mealContext = existingMeals.length > 0 
-    ? `Meals already logged today: ${existingMeals.map(m => `${m.name} (${m.calories}kcal) at ${new Date(m.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`).join(', ')}.`
-    : "No meals logged yet today.";
+    ? `Today: ${totals.cal}cal. History: ${recentMeals}`
+    : "No meals today.";
 
   return ai.chats.create({
     model: 'gemini-3-flash-preview',
     config: {
-      systemInstruction: `You are a friendly, conversational nutritionist AI. 
-      Your goal is to help the user log their meal by understanding what they ate, when they ate it, and estimating the nutrition.
+      systemInstruction: `Role: Nutritionist AI. Context: ${mealContext}
+      Goal: Log meal.
+      Rules:
+      1. Be specific.
+      2. Ask if vague. Estimate if clear.
+      3. Time: 24h HH:MM (e.g. 08:00, 12:30, 19:00). Null if unsure.
+      4. JSON only: { conversationalResponse: string, mealData: { name, calories, protein, carbs, fat, time, short_tip } | null }.
+      5. Tip <10 words.`,
       
-      Context: ${mealContext}
-      
-      1. **Conversational Style**: Be brief, encouraging, and human-like. 
-      2. **Brands & Restaurants**: If the user mentions a specific brand or restaurant, use that specific nutritional data.
-      3. **Clarification**: If the input is too vague (e.g. "a sandwich"), ask for clarification (e.g. "What kind of bread and filling?"). If it's reasonably clear, just estimate it.
-      4. **Estimation**: Estimate the nutrition for the *entire* meal described.
-      5. **Time Handling**: 
-         - **Explicit Time**: If mentioned (e.g. "at 8am", "14:30"), convert to 24h format "HH:MM".
-         - **General Time**: If "breakfast" (use 08:00), "lunch" (use 12:30), "dinner" (use 19:00).
-         - **No Time**: If NO time reference is made, return null (this will imply "now").
-      6. **Output Format**: You must ALWAYS return a JSON object with two parts:
-         - 'conversationalResponse': Your message to the user.
-         - 'mealData': The structured nutrition data. Set to null ONLY if you absolutely need clarification.
-      
-      The 'mealData' should include a 'short_tip' (max 10 words).`,
       responseMimeType: "application/json",
       responseSchema: {
         type: Type.OBJECT,
@@ -190,13 +158,13 @@ export const createMealChatSession = (existingMeals: Meal[] = []) => {
             type: Type.OBJECT,
             nullable: true,
             properties: {
-              name: { type: Type.STRING, description: "Concise name (e.g. 'Avocado Toast')" },
+              name: { type: Type.STRING, description: "Concise name" },
               calories: { type: Type.INTEGER },
               protein: { type: Type.INTEGER },
               carbs: { type: Type.INTEGER },
               fat: { type: Type.INTEGER },
-              time: { type: Type.STRING, description: "Time of meal in HH:MM format (24h) if explicitly mentioned, else null", nullable: true },
-              short_tip: { type: Type.STRING, description: "A very short nutritional tag (e.g. 'High Protein')" }
+              time: { type: Type.STRING, description: "HH:MM format or null", nullable: true },
+              short_tip: { type: Type.STRING }
             },
             required: ["name", "calories", "protein", "carbs", "fat", "short_tip"]
           }
@@ -216,104 +184,13 @@ export const createCoachChatSession = (profile: UserProfile) => {
   return ai.chats.create({
     model: 'gemini-3-flash-preview',
     config: {
-      systemInstruction: `You are "Take Care", a supportive, empathetic, and knowledgeable health coach.
-      
-      User Context:
-      - Name: ${profile.name}
-      - Goal: ${currentLbs} lbs to ${targetLbs} lbs
-      - Dietary Prefs: ${profile.dietaryPreferences}
-      
-      Your Role:
-      1. Discuss the user's daily insights, mood, and diet progress.
-      2. Be encouraging but realistic.
-      3. Keep responses concise (under 3 sentences usually) unless explaining a complex topic.
-      4. Ask follow-up questions to keep the conversation engaging.
-      5. Use Imperial units (lbs) for weight discussions.
-      `,
+      systemInstruction: `Role: Health Coach "Take Care".
+      User: ${profile.name}, ${currentLbs}->${targetLbs}lbs. Prefs: ${profile.dietaryPreferences}.
+      Rules:
+      1. Discuss progress/mood.
+      2. Encouraging, realistic, concise (<3 sentences).
+      3. Ask follow-ups.
+      4. Use lbs.`,
     }
   });
-};
-
-// --- Content Generation ---
-
-export const getDailyCoachMessage = async (profile: UserProfile, todayLog: DailyLog, allLogs: Record<string, DailyLog>) => {
-  if (!apiKey) return "Keep tracking your meals to reach your goals!";
-
-  const targets = calculateTargets(profile);
-  const age = calculateAge(profile.birthDate);
-  const consumed = todayLog.meals.reduce((acc, meal) => ({
-    calories: acc.calories + meal.calories,
-    protein: acc.protein + meal.protein,
-    carbs: acc.carbs + meal.carbs,
-    fat: acc.fat + meal.fat,
-  }), { calories: 0, protein: 0, carbs: 0, fat: 0 });
-
-  // Get recent mood history (last 3 entries)
-  const recentMoods = Object.values(allLogs)
-    .filter(l => l.moodGrade)
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-    .slice(0, 3)
-    .map(l => `${l.date}: ${l.moodGrade}`)
-    .join(', ');
-
-  const currentLbs = Math.round(profile.currentWeight * 2.20462);
-  const targetLbs = Math.round(profile.targetWeight * 2.20462);
-
-  const context = `
-    User Profile: ${age} years old, ${currentLbs} lbs, Goal: ${targetLbs} lbs.
-    Target Calories: ${targets.calories}.
-    Today Consumed: ${consumed.calories} kcal, P: ${consumed.protein}g, C: ${consumed.carbs}g, F: ${consumed.fat}g.
-    Recent Mood Grades (A is best, F is worst): ${recentMoods || "No mood logged recently"}.
-    Current Time: ${new Date().toLocaleTimeString()}.
-  `;
-
-  try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: `Give a brief, encouraging coaching message (max 2-3 sentences) based on the user's progress and mood. 
-      If mood is low, be extra supportive. If they are under-eating, encourage a healthy snack. 
-      ALWAYS end with a short, engaging question to spark conversation. Use pounds (lbs) for weight if mentioned.`,
-      config: {
-        systemInstruction: `You are a friendly diet coach context: ${context}`,
-      }
-    });
-    return response.text || "Stay consistent! How are you feeling right now?";
-  } catch (e) {
-    return "Great job tracking today! How are you feeling?";
-  }
-};
-
-export const generateSpeech = async (text: string, voiceName: string = 'Kore'): Promise<AudioBuffer | null> => {
-  if (!apiKey || !text) return null;
-
-  try {
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash-preview-tts",
-      contents: [{ parts: [{ text }] }],
-      config: {
-        responseModalities: [Modality.AUDIO],
-        speechConfig: {
-          voiceConfig: {
-            prebuiltVoiceConfig: { voiceName: voiceName },
-          },
-        },
-      },
-    });
-
-    const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-    if (!base64Audio) return null;
-
-    const outputAudioContext = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
-    const audioBuffer = await decodeAudioData(
-      decode(base64Audio),
-      outputAudioContext,
-      24000,
-      1,
-    );
-    return audioBuffer;
-
-  } catch (e) {
-    console.error("TTS Error", e);
-    return null;
-  }
 };
