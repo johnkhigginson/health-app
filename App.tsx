@@ -23,6 +23,8 @@ const App: React.FC = () => {
     state, 
     updateProfile, 
     logMeal, 
+    editMeal,
+    deleteMeal,
     logWeight, 
     logMood,
     importData,
@@ -105,6 +107,8 @@ const App: React.FC = () => {
               <Route path="/" element={
                 <Dashboard 
                   state={state} 
+                  onEditMeal={editMeal}
+                  onDeleteMeal={deleteMeal}
                   installPrompt={installPrompt} 
                   onInstall={handleInstallClick} 
                   isIOS={isIOS}

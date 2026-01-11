@@ -70,11 +70,6 @@ export const useAppState = () => {
         yesterday.setDate(yesterday.getDate() - 1);
         const yStr = getLocalDateKey(yesterday);
         if (state.logs[yStr] && state.logs[yStr].meals.length > 0) {
-           // Maintain streak visualization if missed today but had yesterday
-           // We might need to calculate the existing streak up to yesterday here
-           // For simplicity, we just don't reset it to 0 immediately if yesterday exists
-           // But strictly speaking, streak calculation usually requires a recursive check.
-           // Let's do a quick recalc for yesterday to be accurate.
            let streak = 0;
            let check = new Date();
            check.setDate(check.getDate() - 1); // Start from yesterday
@@ -101,9 +96,7 @@ export const useAppState = () => {
   };
 
   const logMeal = (meal: Meal) => {
-    // Determine date from meal timestamp using LOCAL time
     const dateKey = getLocalDateKey(new Date(meal.timestamp));
-    
     setState(prev => {
       const existingLog = prev.logs[dateKey] || { date: dateKey, meals: [] };
       return {
@@ -112,62 +105,77 @@ export const useAppState = () => {
           ...prev.logs,
           [dateKey]: {
             ...existingLog,
-            meals: [...existingLog.meals, meal]
+            meals: [...existingLog.meals, { ...meal, id: meal.id || Date.now().toString() }]
           }
         }
       };
     });
   };
 
-  const editMeal = (meal: Meal) => {
-    const dateKey = getLocalDateKey(new Date(meal.timestamp));
-    
+  const editMeal = (updatedMeal: Meal, originalTimestamp: string) => {
+    const oldDateKey = getLocalDateKey(new Date(originalTimestamp));
+    const newDateKey = getLocalDateKey(new Date(updatedMeal.timestamp));
+
     setState(prev => {
-      const log = prev.logs[dateKey];
-      // If log doesn't exist (e.g. date changed to a new empty day), create it? 
-      // For now assuming date hasn't shifted widely or log exists.
-      // If we supported moving meals between days, we'd need more logic.
-      if (!log) return prev;
+      // If date hasn't changed, simple update
+      if (oldDateKey === newDateKey) {
+        const log = prev.logs[oldDateKey];
+        if (!log) return prev;
+        const updatedMeals = log.meals.map(m => m.id === updatedMeal.id ? updatedMeal : m);
+        return {
+          ...prev,
+          logs: {
+            ...prev.logs,
+            [oldDateKey]: { ...log, meals: updatedMeals }
+          }
+        };
+      } 
+      // Date changed: Move meal
+      else {
+         const oldLog = prev.logs[oldDateKey];
+         const newLog = prev.logs[newDateKey] || { date: newDateKey, meals: [] };
 
-      const updatedMeals = log.meals.map(m => m.id === meal.id ? meal : m);
+         // Remove from old
+         const newOldMeals = oldLog ? oldLog.meals.filter(m => m.id !== updatedMeal.id) : [];
+         
+         // Add to new
+         const newNewMeals = [...newLog.meals, updatedMeal];
 
-      return {
-        ...prev,
-        logs: {
-          ...prev.logs,
-          [dateKey]: { ...log, meals: updatedMeals }
-        }
-      };
+         return {
+            ...prev,
+            logs: {
+              ...prev.logs,
+              ...(oldLog ? { [oldDateKey]: { ...oldLog, meals: newOldMeals } } : {}),
+              [newDateKey]: { ...newLog, meals: newNewMeals }
+            }
+         };
+      }
     });
   };
 
   const deleteMeal = (mealId: string, timestamp: string) => {
     const dateKey = getLocalDateKey(new Date(timestamp));
-    
     setState(prev => {
       const log = prev.logs[dateKey];
       if (!log) return prev;
 
-      const updatedMeals = log.meals.filter(m => m.id !== mealId);
-
+      const filteredMeals = log.meals.filter(m => m.id !== mealId);
+      
       return {
         ...prev,
         logs: {
           ...prev.logs,
-          [dateKey]: { ...log, meals: updatedMeals }
+          [dateKey]: { ...log, meals: filteredMeals }
         }
       };
     });
   };
 
   const logWeight = (weight: number, dateStr?: string) => {
-    // Use provided date (YYYY-MM-DD from input) or default to today local
     const dateKey = dateStr || getLocalDateKey();
-
     setState(prev => {
       const existingLog = prev.logs[dateKey] || { date: dateKey, meals: [] };
       const updatedLog = { ...existingLog, weight };
-      
       const existingEntryIndex = prev.weightHistory.findIndex(w => w.date === dateKey);
       let newHistory = [...prev.weightHistory];
       if (existingEntryIndex >= 0) {
@@ -175,14 +183,9 @@ export const useAppState = () => {
       } else {
         newHistory.push({ date: dateKey, weight });
       }
-      
-      // Sort history by date to ensure charts look correct
       newHistory.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
-      // Only update current weight if the log is for today or newer than current
       const isNewest = newHistory[newHistory.length - 1].date === dateKey;
       const newCurrentWeight = isNewest ? weight : prev.profile.currentWeight;
-
       return {
         ...prev,
         profile: { ...prev.profile, currentWeight: newCurrentWeight },
@@ -219,13 +222,10 @@ export const useAppState = () => {
   const importData = (jsonData: string) => {
     try {
       const parsed = JSON.parse(jsonData);
-      // Basic validation check for essential keys
       if (!parsed.profile || !parsed.logs) {
          alert("Invalid backup file format.");
          return false;
       }
-      
-      // Robust Merge to ensure app doesn't break if file is old version
       const newState: AppState = {
         ...parsed,
         profile: { ...DEFAULT_PROFILE, ...parsed.profile },
@@ -233,7 +233,6 @@ export const useAppState = () => {
         weightHistory: parsed.weightHistory || [],
         streak: parsed.streak || 0
       };
-      
       setState(newState);
       return true;
     } catch (e) {

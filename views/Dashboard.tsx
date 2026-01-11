@@ -6,20 +6,20 @@ import { calculateTargets } from '../services/geminiService';
 import { Card } from '../components/ui/Card';
 import { ProgressBar } from '../components/ui/ProgressBar';
 import { EditMealModal } from '../components/EditMealModal';
-import { useAppState } from '../hooks/useAppState';
 
 const KG_TO_LBS = 2.20462;
 
 interface DashboardProps {
   state: AppState;
+  onEditMeal: (meal: Meal, originalTimestamp: string) => void;
+  onDeleteMeal: (id: string, timestamp: string) => void;
   installPrompt: any;
   onInstall: () => void;
   isIOS: boolean;
   isStandalone: boolean;
 }
 
-export const Dashboard: React.FC<DashboardProps> = ({ state, installPrompt, onInstall, isIOS, isStandalone }) => {
-  const { editMeal, deleteMeal } = useAppState();
+export const Dashboard: React.FC<DashboardProps> = ({ state, onEditMeal, onDeleteMeal, installPrompt, onInstall, isIOS, isStandalone }) => {
   const navigate = useNavigate();
   
   // Dashboard State
@@ -44,7 +44,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ state, installPrompt, onIn
     protein: acc.protein + meal.protein,
     carbs: acc.carbs + meal.carbs,
     fat: acc.fat + meal.fat,
-  }), { calories: 0, protein: 0, carbs: 0, fat: 0 }), [todayLog]);
+  }), { calories: 0, protein: 0, carbs: 0, fat: 0 }), [todayLog.meals]);
 
   // Overall Weight Change Calculation
   const overallChange = useMemo(() => {
@@ -233,10 +233,15 @@ export const Dashboard: React.FC<DashboardProps> = ({ state, installPrompt, onIn
         isOpen={!!editingMeal} 
         onClose={() => setEditingMeal(null)}
         initialMeal={editingMeal}
-        onSave={editMeal}
+        onSave={(updated) => {
+          if (editingMeal) {
+            onEditMeal(updated, editingMeal.timestamp);
+            setEditingMeal(null);
+          }
+        }}
         onDelete={(id) => {
           if (editingMeal) {
-            deleteMeal(id, editingMeal.timestamp);
+            onDeleteMeal(id, editingMeal.timestamp);
             setEditingMeal(null);
           }
         }}

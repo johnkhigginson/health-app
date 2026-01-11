@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { ChevronLeft, ChevronRight, ChevronDown, ChevronUp, TrendingDown, TrendingUp, Minus } from 'lucide-react';
@@ -207,7 +208,8 @@ export const WeightTracker: React.FC<WeightTrackerProps> = ({ history, onLogWeig
       <div className="space-y-4">
         <h3 className="font-bold text-slate-800 dark:text-white px-1">History</h3>
         
-        {Object.entries(groupedHistory).map(([month, monthLogs]) => (
+        {/* Explicitly cast entry type to fix TS unknown errors */}
+        {(Object.entries(groupedHistory) as [string, any[]][]).map(([month, monthLogs]) => (
           <div key={month} className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 overflow-hidden">
             <button 
               onClick={() => toggleMonth(month)}

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { Grade, DailyLog } from '../types';
 import { Card } from '../components/ui/Card';
@@ -177,7 +178,7 @@ export const WellbeingView: React.FC<WellbeingViewProps> = ({ logs, onLogGrade }
                 </div>
              </div>
              <button 
-               onClick={() => changeDate(1)} 
+               onClick={changeDate.bind(null, 1)} 
                className="w-12 h-12 flex items-center justify-center hover:bg-white dark:hover:bg-slate-600 rounded-lg transition-all active:scale-95 text-slate-500 dark:text-slate-400 z-20"
              >
                <ChevronRight className="w-6 h-6" />
@@ -234,7 +235,8 @@ export const WellbeingView: React.FC<WellbeingViewProps> = ({ logs, onLogGrade }
            </div>
         )}
 
-        {Object.entries(groupedLogs).map(([month, monthLogs]) => (
+        {/* Explicitly cast entry type to fix TS unknown errors */}
+        {(Object.entries(groupedLogs) as [string, DailyLog[]][]).map(([month, monthLogs]) => (
           <div key={month} className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 overflow-hidden">
             <button 
               onClick={() => toggleMonth(month)}

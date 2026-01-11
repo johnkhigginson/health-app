@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, Trash2, Flame, Droplet, Wheat, Dumbbell } from 'lucide-react';
+import { X, Save, Trash2, Flame, Droplet, Wheat, Dumbbell, Calendar } from 'lucide-react';
 import { Meal } from '../types';
 
 interface EditMealModalProps {
@@ -23,6 +23,27 @@ export const EditMealModal: React.FC<EditMealModalProps> = ({ isOpen, onClose, o
 
   const handleChange = (field: keyof Meal, value: any) => {
     setFormData(prev => prev ? ({ ...prev, [field]: value }) : null);
+  };
+
+  // Helper to format ISO date for datetime-local input
+  const formatForInput = (isoString: string) => {
+    try {
+      const date = new Date(isoString);
+      // Adjust to local time string format: YYYY-MM-DDThh:mm
+      const offset = date.getTimezoneOffset() * 60000;
+      const localISOTime = new Date(date.getTime() - offset).toISOString().slice(0, 16);
+      return localISOTime;
+    } catch (e) {
+      return '';
+    }
+  };
+
+  const handleTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const localVal = e.target.value;
+    if (localVal) {
+      const date = new Date(localVal);
+      handleChange('timestamp', date.toISOString());
+    }
   };
 
   const MacroInput: React.FC<{ 
@@ -71,6 +92,20 @@ export const EditMealModal: React.FC<EditMealModalProps> = ({ isOpen, onClose, o
             />
           </div>
 
+          {/* Time Input */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Time</label>
+            <div className="relative">
+              <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+              <input 
+                type="datetime-local" 
+                value={formatForInput(formData.timestamp)}
+                onChange={handleTimeChange}
+                className="w-full p-4 pl-12 bg-slate-50 dark:bg-slate-700 text-lg font-medium text-slate-900 dark:text-white border border-slate-200 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
+              />
+            </div>
+          </div>
+
           {/* Macros Grid */}
           <div className="grid grid-cols-2 gap-4">
              <MacroInput 
@@ -101,12 +136,6 @@ export const EditMealModal: React.FC<EditMealModalProps> = ({ isOpen, onClose, o
                onChange={(v) => handleChange('fat', v)} 
                color="text-yellow-500" 
              />
-          </div>
-
-          {/* Time Check (ReadOnly visual for now or editable if needed) */}
-          <div className="flex items-center justify-between text-sm text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-700/30 p-3 rounded-lg">
-             <span>Logged time</span>
-             <span>{new Date(formData.timestamp).toLocaleString()}</span>
           </div>
 
           <div className="flex gap-3 pt-2">
