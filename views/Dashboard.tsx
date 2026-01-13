@@ -1,6 +1,6 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Trophy, Settings, Lightbulb, Flame, Scale, Download, X, ChevronRight, MessageSquare, Share, TrendingDown, TrendingUp, Minus } from 'lucide-react';
+import { Trophy, Settings, Lightbulb, Flame, Scale, Download, X, ChevronRight, ChevronLeft, MessageSquare, Share, TrendingDown, TrendingUp } from 'lucide-react';
 import { AppState, Meal } from '../types';
 import { calculateTargets } from '../services/geminiService';
 import { Card } from '../components/ui/Card';
@@ -26,7 +26,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ state, onEditMeal, onDelet
   const [dismissInstall, setDismissInstall] = React.useState(false);
   const [editingMeal, setEditingMeal] = React.useState<Meal | null>(null);
 
-  // Use local date for 'today' to ensure dashboard shows current day in user's timezone
+  // Initialize selectedDate to today
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  });
+
+  // Calculate strict 'today' string for comparison
   const today = useMemo(() => {
     const now = new Date();
     const year = now.getFullYear();
@@ -35,18 +44,29 @@ export const Dashboard: React.FC<DashboardProps> = ({ state, onEditMeal, onDelet
     return `${year}-${month}-${day}`;
   }, []);
 
-  const todayLog = state.logs[today] || { date: today, meals: [], weight: undefined };
+  const isToday = selectedDate === today;
+
+  const changeDate = (offset: number) => {
+    const date = new Date(selectedDate + 'T00:00:00'); // Force local time
+    date.setDate(date.getDate() + offset);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    setSelectedDate(`${year}-${month}-${day}`);
+  };
+
+  const currentLog = state.logs[selectedDate] || { date: selectedDate, meals: [], weight: undefined };
   
   const targets = useMemo(() => calculateTargets(state.profile), [state.profile]);
 
-  const consumed = useMemo(() => todayLog.meals.reduce((acc, meal) => ({
+  const consumed = useMemo(() => currentLog.meals.reduce((acc, meal) => ({
     calories: acc.calories + meal.calories,
     protein: acc.protein + meal.protein,
     carbs: acc.carbs + meal.carbs,
     fat: acc.fat + meal.fat,
-  }), { calories: 0, protein: 0, carbs: 0, fat: 0 }), [todayLog.meals]);
+  }), { calories: 0, protein: 0, carbs: 0, fat: 0 }), [currentLog.meals]);
 
-  // Overall Weight Change Calculation
+  // Overall Weight Change Calculation (Independent of selected date)
   const overallChange = useMemo(() => {
     if (state.weightHistory.length === 0) return 0;
     
@@ -59,16 +79,19 @@ export const Dashboard: React.FC<DashboardProps> = ({ state, onEditMeal, onDelet
   }, [state.weightHistory, state.profile.currentWeight]);
 
   const handleOpenCoachChat = () => {
-    // Navigate to coach view without fetching insight
     navigate('/coach');
   };
 
   const showInstallBanner = !isStandalone && !dismissInstall && (installPrompt || isIOS);
 
+  const displayDateString = useMemo(() => {
+    return new Date(selectedDate + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+  }, [selectedDate]);
+
   return (
     <div className="pb-24 space-y-6">
       
-      {/* Install Prompt Banner - Theme Consistent */}
+      {/* Install Prompt Banner */}
       {showInstallBanner && (
         <Card className="flex flex-col gap-3 animate-fade-in-up border-emerald-500/30 dark:border-emerald-500/50 ring-1 ring-emerald-500/20">
            <div className="flex items-center justify-between">
@@ -89,7 +112,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ state, onEditMeal, onDelet
              </button>
            </div>
            
-           {/* Dynamic Content based on Platform */}
            {isIOS ? (
              <div className="bg-slate-50 dark:bg-slate-700/30 rounded-xl p-3 text-xs leading-relaxed border border-slate-100 dark:border-slate-700/50">
                <p className="font-semibold mb-2 text-slate-700 dark:text-slate-300">To install on iPhone/iPad:</p>
@@ -113,11 +135,33 @@ export const Dashboard: React.FC<DashboardProps> = ({ state, onEditMeal, onDelet
         </Card>
       )}
 
-      <header className="flex justify-between items-center">
+      {/* Header with Date Navigation */}
+      <header className="flex justify-between items-start">
         <div>
           <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Hello, {state.profile.name}</h1>
-          <p className="text-slate-500 dark:text-slate-400 text-sm">{new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}</p>
+          
+          <div className="flex items-center gap-1 mt-1">
+             <button 
+               onClick={() => changeDate(-1)} 
+               className="p-1 -ml-2 rounded-full hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 transition"
+             >
+               <ChevronLeft className="w-5 h-5" />
+             </button>
+             
+             <span className="text-slate-500 dark:text-slate-400 text-sm font-medium min-w-[140px] text-center">
+                {displayDateString}
+             </span>
+
+             <button 
+               onClick={() => changeDate(1)} 
+               disabled={isToday}
+               className={`p-1 rounded-full transition ${isToday ? 'opacity-30 cursor-not-allowed text-slate-400' : 'hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400'}`}
+             >
+               <ChevronRight className="w-5 h-5" />
+             </button>
+          </div>
         </div>
+
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1 bg-orange-100 dark:bg-orange-900/40 text-orange-600 dark:text-orange-400 px-3 py-1 rounded-full text-xs font-bold">
             <Trophy className="w-3 h-3" />
@@ -129,7 +173,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ state, onEditMeal, onDelet
         </div>
       </header>
 
-      {/* Coach Card - Interactive */}
+      {/* Coach Card */}
       <Card 
         className="bg-gradient-to-br from-emerald-600 to-teal-700 text-white border-none shadow-lg shadow-emerald-600/20 cursor-pointer group relative overflow-hidden"
         onClick={handleOpenCoachChat}
@@ -165,7 +209,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ state, onEditMeal, onDelet
           <span className="text-2xl font-bold text-slate-800 dark:text-white">{Math.round(state.profile.currentWeight * KG_TO_LBS)}</span>
           <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">Current lbs</span>
           
-          {/* Overall Change Indicator */}
           {Math.abs(overallChange) > 0.5 && (
             <div className={`mt-2 flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full 
               ${overallChange < 0 
@@ -181,26 +224,32 @@ export const Dashboard: React.FC<DashboardProps> = ({ state, onEditMeal, onDelet
 
       {/* Macros */}
       <Card>
-        <h3 className="font-bold text-slate-800 dark:text-white mb-4">Today's Nutrition</h3>
+        <h3 className="font-bold text-slate-800 dark:text-white mb-4">
+          {isToday ? "Today's Nutrition" : "Daily Nutrition"}
+        </h3>
         <ProgressBar label="Calories" current={consumed.calories} max={targets.calories} unit="kcal" color="bg-orange-400" />
         <ProgressBar label="Protein" current={consumed.protein} max={targets.protein} unit="g" color="bg-blue-400" />
         <ProgressBar label="Carbs" current={consumed.carbs} max={targets.carbs} unit="g" color="bg-emerald-400" />
         <ProgressBar label="Fat" current={consumed.fat} max={targets.fat} unit="g" color="bg-yellow-400" />
       </Card>
 
-      {/* Recent Meals */}
+      {/* Meals List */}
       <div>
         <div className="flex justify-between items-center mb-4 px-1">
-          <h3 className="font-bold text-slate-800 dark:text-white">Recent Meals</h3>
-          <Link to="/log" className="text-sm text-emerald-600 dark:text-emerald-400 font-medium hover:underline">Log Meal</Link>
+          <h3 className="font-bold text-slate-800 dark:text-white">
+            {isToday ? "Recent Meals" : "Meals"}
+          </h3>
+          {isToday && (
+            <Link to="/log" className="text-sm text-emerald-600 dark:text-emerald-400 font-medium hover:underline">Log Meal</Link>
+          )}
         </div>
         <div className="space-y-3">
-          {todayLog.meals.length === 0 ? (
+          {currentLog.meals.length === 0 ? (
             <div className="text-center py-8 text-slate-400 dark:text-slate-500 bg-white dark:bg-slate-800 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700">
-              No meals logged today yet.
+              {isToday ? "No meals logged today yet." : "No meals logged for this day."}
             </div>
           ) : (
-            todayLog.meals.slice().reverse().map(meal => (
+            currentLog.meals.slice().reverse().map(meal => (
               <button 
                 key={meal.id} 
                 onClick={() => setEditingMeal(meal)}
