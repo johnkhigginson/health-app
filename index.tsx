@@ -1,6 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
+import { initAnalytics } from './services/analytics';
 
 // Capture PWA install prompt early
 window.addEventListener('beforeinstallprompt', (e) => {
@@ -10,6 +11,9 @@ window.addEventListener('beforeinstallprompt', (e) => {
   // @ts-ignore
   window.deferredPrompt = e;
 });
+
+// Loads gtag.js only when GA_MEASUREMENT_ID is configured.
+initAnalytics();
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
