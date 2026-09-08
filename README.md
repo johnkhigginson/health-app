@@ -81,3 +81,7 @@ The only data that leaves the browser is the meal and coaching text sent to the 
 ## Disclaimer
 
 This is a personal project, not a medical device. Nutritional estimates come from a language model and will sometimes be wrong. Do not use it to make medical decisions.
+
+## License
+
+MIT. See [LICENSE](LICENSE).
